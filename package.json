@@ -1,0 +1,28 @@
+{
+  "name": "visualprompt",
+  "version": "0.1.0",
+  "description": "VisualPrompt — 웹 UI 위에 수정 프롬프트를 핀으로 꽂아 fixpoint(수정 포인트)를 수집하고, 서버의 inbox 디렉토리에 떨어뜨려 에이전트가 실제 소스를 고치게 하는 도구",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "vite",
+    "build": "vite build",
+    "start": "cross-env NODE_ENV=production node server/index.js",
+    "preview": "npm run build && npm run start"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.17.0",
+    "cheerio": "^1.0.0",
+    "express": "^4.19.2",
+    "playwright": "^1.61.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "vite": "^6.0.0"
+  }
+}

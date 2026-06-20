@@ -1,0 +1,15 @@
+{
+  "$comment": "VisualPrompt 타깃 설정. target 모드를 지정하면 툴바에서 빠르게 로드할 수 있다.",
+  "targets": [
+    {
+      "id": "local-dev",
+      "label": "로컬 개발 서버",
+      "mode": "local",
+      "url": "http://localhost:3000",
+      "$comment_repoRoot": "이 프론트엔드의 실제 소스코드 레포 루트. fixpoint 에 파일 경로 힌트를 넣는 데 쓰인다.",
+      "repoRoot": "./demo-app"
+    }
+  ],
+  "$comment_default": "URL 없이 시작할 때 보여줄 기본 타깃 id (선택)",
+  "defaultTarget": null
+}

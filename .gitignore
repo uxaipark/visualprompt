@@ -1,0 +1,18 @@
+node_modules/
+dist/
+snapshots/
+sessions/
+.env
+.DS_Store
+*.log
+
+# 검증/테스트 결과 데이터 (하니스 스크립트는 유지, 산출물만 제외)
+verify/results.jsonl
+verify/results_retry.jsonl
+verify/failed.txt
+verify/summary.json
+verify/failures.md
+
+# fixpoint inbox 실데이터 (구조/AGENT.md/.gitkeep 만 커밋)
+fixpoints/pending/fp-*
+fixpoints/applied/fp-*

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo Shop — 개발 중인 로컬 프론트엔드</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; color: #1f2937; }
+      header { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #e5e7eb; }
+      header img { height: 32px; }
+      .brand { font-weight: 700; font-size: 18px; }
+      main { max-width: 720px; margin: 40px auto; padding: 0 24px; }
+      .product { display: flex; gap: 24px; align-items: center; }
+      .product img { width: 200px; border-radius: 12px; background: #f3f4f6; }
+      h1 { font-size: 24px; }
+      .price { font-size: 20px; color: #2563eb; font-weight: 700; }
+      .buy { margin-top: 16px; padding: 10px 20px; border: 0; border-radius: 8px; background: #111827; color: #fff; font-size: 15px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <header data-component="Header">
+      <img id="logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' rx='6' fill='%232563eb'/%3E%3C/svg%3E" alt="logo" />
+      <span class="brand">Demo Shop</span>
+    </header>
+    <main data-component="ProductPage">
+      <div class="product">
+        <img alt="product" />
+        <div>
+          <h1>무선 헤드폰</h1>
+          <div class="price">₩129,000</div>
+          <button id="buy" class="buy" data-testid="buy-btn" data-component="BuyButton">구매하기</button>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

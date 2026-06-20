@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px/1.5 system-ui, sans-serif; width: 260px; margin: 0; padding: 12px; color: #0f172a; }
+      h1 { font-size: 14px; margin: 0 0 8px; }
+      label { display: block; font-size: 12px; color: #64748b; margin: 8px 0 2px; }
+      input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+      button { margin-top: 10px; width: 100%; padding: 7px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-size: 13px; cursor: pointer; }
+      .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+      .row input[type=checkbox] { width: auto; }
+      .hint { font-size: 11px; color: #64748b; margin-top: 10px; line-height: 1.5; }
+      .ok { color: #16a34a; font-size: 12px; min-height: 16px; margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>📌 VisualPrompt Collector</h1>
+    <label for="server">VP 서버 주소</label>
+    <input id="server" placeholder="http://localhost:3001" />
+    <div class="row">
+      <input type="checkbox" id="enabled" />
+      <label for="enabled" style="margin:0">이 탭에서 수집 모드 켜기</label>
+    </div>
+    <button id="save">저장 / 적용</button>
+    <div class="ok" id="status"></div>
+    <div class="hint">
+      수집 모드를 켜고 페이지 요소를 클릭하면 말풍선이 떠요. 프롬프트를 적고 저장하면
+      서버 <code>fixpoints/pending</code> 에 적재됩니다. 로그인/SPA/봇차단 사이트도 그대로 동작합니다.
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

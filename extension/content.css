@@ -1,0 +1,15 @@
+.__vpx_mode, .__vpx_mode * { cursor: crosshair !important; }
+#__vpx_hl { position: fixed; z-index: 2147483640; pointer-events: none; border: 2px solid #2563eb; background: rgba(37,99,235,.12); border-radius: 3px; display: none; }
+#__vpx_tip { position: fixed; z-index: 2147483641; pointer-events: none; background: #111827; color: #fff; font: 11px/1.4 ui-monospace, monospace; padding: 3px 6px; border-radius: 4px; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
+.__vpx_pin { position: fixed; z-index: 2147483642; width: 22px; height: 22px; transform: translate(-50%,-100%); cursor: pointer; font-size: 16px; line-height: 22px; text-align: center; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.__vpx_pin .__vpx_badge { position: absolute; top: -6px; right: -8px; background: #ef4444; color: #fff; font: 700 9px/14px sans-serif; min-width: 14px; height: 14px; border-radius: 8px; padding: 0 3px; }
+#__vpx_pop { position: fixed; z-index: 2147483645; width: 320px; background: #fff; color: #111; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font: 13px/1.4 system-ui, sans-serif; display: none; }
+#__vpx_pop .__vpx_sel { font: 11px/1.4 ui-monospace, monospace; background: #f3f4f6; padding: 6px 8px; border-radius: 6px; margin: 8px; word-break: break-all; max-height: 64px; overflow: auto; white-space: pre-wrap; }
+#__vpx_pop textarea { width: calc(100% - 16px); margin: 0 8px; box-sizing: border-box; min-height: 70px; resize: vertical; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px; font: 13px/1.4 system-ui, sans-serif; }
+#__vpx_pop .__vpx_row { display: flex; gap: 6px; justify-content: flex-end; padding: 8px; }
+#__vpx_pop button { font: 12px system-ui, sans-serif; padding: 5px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+#__vpx_pop button.__vpx_save { background: #2563eb; color: #fff; border-color: #2563eb; }
+#__vpx_fab { position: fixed; right: 16px; bottom: 16px; z-index: 2147483646; width: 46px; height: 46px; border-radius: 50%; background: #2563eb; color: #fff; border: 0; font-size: 20px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+#__vpx_fab.on { background: #16a34a; }
+#__vpx_toast { position: fixed; right: 16px; bottom: 72px; z-index: 2147483646; background: #111827; color: #fff; font: 12px system-ui, sans-serif; padding: 8px 12px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 280px; }
+#__vpx_toast.show { opacity: 1; }
