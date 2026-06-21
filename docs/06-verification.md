@@ -1,36 +1,37 @@
-# 06. 안정성 검증 — 1000개 사이트
+# 06. Stability Verification — 1000 Sites
 
-대표 웹사이트 1000개를 프록시로 접속해 로딩·리소스 크롤·JS 에러·인터랙션을 자동 측정.
-하니스는 `verify/` 에 있고(재현 가능), 결과 데이터는 `.gitignore`.
+1000 representative websites were loaded through the proxy to automatically measure loading, resource
+crawling, JS errors, and interactivity. The harness lives in `verify/` (reproducible); result data is
+`.gitignore`d.
 
-## 1. 방법
+## 1. Method
 
-- **목록**: `verify/sites.txt` — 공개 top-100000 도메인의 상위 1000 + 한국 인기/하드케이스.
-- **하니스**: `verify/run.mjs` — Playwright 로 각 사이트를 `/proxy?url=` 로드(동시성 8, 사이트당 28s).
-  - 측정: 최종 status, 요청 총수/실패수(프록시 경유 리소스), pageerror/console error,
-    본문 길이·요소 수·링크/버튼/입력 수, framework, React fiber, Next `__next_f` 소비 여부.
-- **재개**: `results.jsonl` 에 증분 저장, 이미 처리한 도메인 스킵.
-- **리포트**: `verify/report.py` → `summary.json` + `failures.md`(카테고리별 + 에러 메시지).
+- **List**: `verify/sites.txt` — top 1000 of a public top-100000 domain list + popular Korean/hard cases.
+- **Harness**: `verify/run.mjs` — Playwright loads each site via `/proxy?url=` (concurrency 8, 28s/site).
+  - Measures: final status, total/failed requests (proxied resources), pageerror/console error,
+    body length·element count·link/button/input count, framework, React fiber, Next `__next_f` consumption.
+- **Resumable**: incremental append to `results.jsonl`, skips already-processed domains.
+- **Report**: `verify/report.py` → `summary.json` + `failures.md` (per category + error messages).
 
-## 2. 분류 기준
+## 2. Classification
 
-| 카테고리 | 정의 |
+| Category | Definition |
 |---|---|
-| `OK` | 로딩 + 인터랙션 요소 존재 |
-| `CONN_FAIL` | 접속 실패(봇차단 403 / 5xx / 프록시 에러 / 타임아웃) |
-| `HYDRATION_FAIL` | 로딩되나 클릭 핸들러 미부착(Next/SPA dom hydration 실패) |
-| `CRAWL_DEGRADED` | 프록시 경유 리소스 다수 실패(>8 & >35%) |
-| `BLANK` | 본문 거의 없음 |
-| `LIKELY_BROKEN` | 본문 적고 인터랙션 요소 0 (소프트 휴리스틱) |
-| `TIMEOUT` | 사이트당 28s 초과 |
+| `OK` | loaded + interactive elements present |
+| `CONN_FAIL` | connection failure (bot-block 403 / 5xx / proxy error / timeout) |
+| `HYDRATION_FAIL` | loads but click handlers not attached (Next/SPA DOM hydration failed) |
+| `CRAWL_DEGRADED` | many proxied resources fail (>8 & >35%) |
+| `BLANK` | almost no body |
+| `LIKELY_BROKEN` | little body and zero interactive elements (soft heuristic) |
+| `TIMEOUT` | exceeded 28s/site |
 
-## 3. 결과 (www 폴백 적용 후)
+## 3. Results (after www fallback)
 
 ```
-총 1000  OK 638 (63.8%)  실패 362
+total 1000   OK 638 (63.8%)   failed 362
 ```
 
-| 카테고리 | 개수 |
+| Category | Count |
 |---|---|
 | OK | 638 |
 | CONN_FAIL | 287 |
@@ -39,38 +40,39 @@
 | HYDRATION_FAIL | 16 |
 | BLANK | 11 |
 
-### CONN_FAIL(287) 귀속 분석
-| status | 개수 | 귀속 |
+### CONN_FAIL (287) attribution
+| status | count | attribution |
 |---|---|---|
-| 403 외(451·429·401…) | 약 146 | **사이트 측** — 데이터센터 IP/봇 차단(불가피) |
-| 502 | 약 67 | dead-apex·TLS·차단(일부 www 폴백 구제) |
-| 0·522·503(불통/타임아웃) | 약 49 | 미응답·우리 IP 차단(불가피) |
-| 404 | 약 23 | bare apex 에 페이지 없음 |
+| 403 + (451·429·401…) | ~146 | **site-side** — datacenter IP / bot blocking (unavoidable) |
+| 502 | ~67 | dead-apex·TLS·blocking (some recovered by www fallback) |
+| 0·522·503 (unreachable/timeout) | ~49 | no response / our IP blocked (unavoidable) |
+| 404 | ~23 | no page at the bare apex |
 
-> 실패 362 중 약 **285개(78%)가 사이트 측 차단/불통** — 데이터센터에서 도는 *어떤* 서버 프록시도
-> 못 뚫는다. 이건 **확장**이 전부 우회한다(실제 탭).
+> Of the 362 failures, ~**285 (78%) are site-side blocking/unreachable** — no server proxy from a
+> datacenter can break through these. The **extension** bypasses all of them (real tab).
 
-## 4. 검증으로 발견·수정한 실제 버그
+## 4. Real bugs found & fixed during verification
 
-| 발견 | 수정 |
+| Found | Fix |
 |---|---|
-| apex DNS/cert 실패 502 (livedoor.jp·china.com·suning.com…) | **www 폴백** → 26개 복구(61.2% → 63.8%) |
-| 모든 비-GET 404(로그인/분석 POST) | `app.all` + 바디 전달 |
-| 로그인 세션 미유지 | Set-Cookie 재작성 + manual redirect |
-| 오디오 재생 실패 | Range 헤더 전달 |
-| `text/css` 모듈 거부 / `Unexpected token '<'` | Sec-Fetch-Dest 우선 MIME |
-| three.js 통째 사망 | bare specifier 보존 |
-| SW 등록 실패 노이즈 | shim SW 무력화 |
+| Apex DNS/cert failures → 502 (livedoor.jp·china.com·suning.com…) | **www fallback** → recovered 26 (61.2% → 63.8%) |
+| All non-GET 404 (login/analytics POST) | `app.all` + body forward |
+| Login session not retained | Set-Cookie rewrite + manual redirect |
+| Audio playback failure | Range header forwarding |
+| `text/css` module rejection / `Unexpected token '<'` | Sec-Fetch-Dest-first MIME |
+| three.js dying entirely | bare-specifier preservation |
+| SW registration error noise | shim SW neutralization |
 
-## 5. HYDRATION_FAIL(16) — Next/SPA dev
+## 5. HYDRATION_FAIL (16) — Next/SPA dev
 
 mohazi.com, kurly.com, vercel.app, openai.com, msn.com, weather.com, icloud.com, time.com,
-wetransfer.com 등. 프록시가 로드는 하지만 클라이언트 하이드레이션이 부팅 안 됨.
-→ 구조적 한계, **확장으로 우회**. mohazi.com/m/studio 는 확장 수집 실측 성공(04·03 문서).
+wetransfer.com, etc. The proxy loads them but the client hydration never boots.
+→ Structural limit, **bypassed via the extension**. mohazi.com/m/studio was collected successfully via
+the extension in a live measurement (docs 03·04).
 
-## 6. 한계/주의
+## 6. Limits/caveats
 
-- `LIKELY_BROKEN`(amazon·reddit·nytimes 등)은 "본문/클릭요소가 적다"는 **소프트 휴리스틱**이라
-  일부는 실제 부분 동작(완전 차단 아님). 정밀 판정하려면 개별 재현 필요.
-- 측정은 데이터센터/로컬 IP 기준이라 봇차단 비율이 실제 사용자(가정 IP)보다 높게 잡힐 수 있다.
-- 재현: `cd visualprompt && CONC=8 LIMIT=1000 node verify/run.mjs && python3 verify/report.py`.
+- `LIKELY_BROKEN` (amazon·reddit·nytimes, etc.) is a **soft heuristic** ("little body/few clickables");
+  some actually partially work (not fully blocked). Precise judgment needs per-domain re-runs.
+- Measured from a datacenter/local IP, so bot-block rates may be higher than for a real user (home IP).
+- Reproduce: `cd visualprompt && CONC=8 LIMIT=1000 node verify/run.mjs && python3 verify/report.py`.

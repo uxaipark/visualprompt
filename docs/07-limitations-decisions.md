@@ -1,57 +1,59 @@
-# 07. 구조적 한계 · 설계 결정 로그
+# 07. Structural Limits · Design Decision Log
 
-## A. 구조적 한계 (폴백으로 못 메움)
+## A. Structural limits (not coverable by fallback)
 
-### A1. Next.js / Vite **dev 모드** 하이드레이션
-- **증상**: 프록시로 로드·렌더는 되지만 클릭 핸들러가 안 붙음(React fiber 0, Next `__next_f` 미소비).
-- **원인**: dev 번들러(Turbopack/Vite dev)의 클라이언트 부트스트랩이 **"앱이 자기 진짜 오리진에서 돈다"**
-  고 가정. 프록시는 `localhost:5173` 오리진에서 서빙하므로 그 부트스트랩이 실행되지 않음.
-- **근거**: shim·JS 재작성을 모두 꺼도 재현, 청크는 바이트 동일·문법 정상, 네트워크 실패 0 →
-  우리 코드 버그 아님(검증 완료).
-- **대안**: **브라우저 확장**(실제 탭, 네이티브 하이드레이션). mohazi.com/m/studio 실측 성공.
-- **참고**: 같은 앱의 **빌드/배포본**(`next build && next start`)이면 프록시로 잘 뜰 가능성 높음.
+### A1. Next.js / Vite **dev mode** hydration
+- **Symptom**: loads/renders through the proxy, but click handlers don't attach (React fiber 0, Next
+  `__next_f` not consumed).
+- **Cause**: the dev bundler's (Turbopack/Vite dev) client bootstrap assumes **"the app runs on its own
+  real origin"**. The proxy serves from `localhost:5173`, so that bootstrap doesn't execute.
+- **Evidence**: reproduces even with shim and JS rewriting disabled; chunks are byte-identical and
+  syntactically valid; zero network failures → not our bug (verified).
+- **Alternative**: **browser extension** (real tab, native hydration). Verified live on mohazi.com/m/studio.
+- **Note**: a **built/deployed** version of the same app (`next build && next start`) is likely to proxy fine.
 
-### A2. 봇차단 / 법적차단 / 불통
-- 403(Cloudflare/Akamai 챌린지), 451(법적), 522/503/타임아웃. 데이터센터 IP·UA 차단.
-- **대안**: 확장(가정 IP·실제 브라우저), 또는 렌더+세션.
+### A2. Bot block / legal block / unreachable
+- 403 (Cloudflare/Akamai challenge), 451 (legal), 522/503/timeout. Datacenter IP/UA blocking.
+- **Alternative**: extension (home IP / real browser), or render+session.
 
-### A3. WebGL 단일 캔버스 내부 요소
-- Unity/Flutter CanvasKit/three.js 등은 화면을 **하나의 `<canvas>`** 에 그린다 → 내부 UI 는 DOM 부재 →
-  selector 로 지목 불가(크롬 DevTools 도 동일).
-- **현재**: 캔버스 밖 일반 DOM 요소는 정상 핀.
-- **향후**: 캔버스 위 **좌표(x,y)+영역+스크린샷 크롭** 기반 fixpoint 모드(렌더 스크린샷 재활용).
+### A3. WebGL single-canvas internals
+- Unity/Flutter CanvasKit/three.js draw the screen into **one `<canvas>`** → inner UI has no DOM →
+  not addressable by selector (Chrome DevTools can't either).
+- **Now**: normal DOM elements outside the canvas pin fine.
+- **Future**: coordinate-based fixpoints over the canvas (x,y + region + screenshot crop), reusing the render screenshot.
 
 ### A4. HMR WebSocket
-- dev 서버의 핫리로드(ws)는 프록시 터널 불가 → 콘솔 에러. **무해**(앱 동작).
-- 대상도 :5173 이면 VP 의 Vite(:5173)와 포트 충돌로 더 시끄러움 → **배포모드 단일포트**(`npm run preview`) 권장.
+- A dev server's hot-reload (ws) can't tunnel through the proxy → console error. **Harmless** (app works).
+- If the target is also on :5173, it collides with VP's Vite (:5173) and gets noisier → prefer the
+  single-port production mode (`npm run preview`).
 
-## B. 설계 결정 로그
+## B. Design decision log
 
-| # | 결정 | 이유 / 대안 |
+| # | Decision | Reason / alternative |
 |---|---|---|
-| D1 | iframe + **서버 프록시** | 단순 iframe 은 X-Frame-Options/CSP/교차출처로 불가. 프록시로 same-origin 화. |
-| D2 | 전체 URL 재작성 + shim 런타임 후킹 | `<base>` 만으론 SPA 의 동적 fetch/import 가 깨짐. |
-| D3 | `Sec-Fetch-Dest` 우선 MIME | content-type 을 틀리게 주는 서버 다수(Vite `.css` 모듈 등). 가장 신뢰 가능한 신호. |
-| D4 | bare specifier **불변** | import map 해석 대상을 건드리면 three.js 등 통째 사망. |
-| D5 | `redirect:'manual'` + Set-Cookie 재작성 | 로그인 302 의 쿠키 유실/도메인 불일치 해결. |
-| D6 | 수집 경로 **3종 분리** | 프록시 한계를 렌더·확장으로 보완. 하나로 다 못 함. |
-| D7 | 렌더 엔진 = **Playwright(Chromium)** | naver/로그인/SPA 를 진짜 브라우저로 렌더. 설치 시 ~150MB 트레이드오프 수용. |
-| D8 | 로그인 = **헤드드 수동 로그인** → storageState | 캡차/2FA/소셜은 자동화 불가 → 사람이 한 번 로그인, 세션 재사용. |
-| D9 | fixpoint = **파일 드롭(inbox) + 내장 AI 편집** 병행 | 파일은 서버 에이전트가 픽업, AI 편집은 즉석 미리보기. |
-| D10 | fixpoint 마크다운에 **검색어/추정파일** 명시 | 에이전트가 selector 대신 코드 검색으로 소스를 찾게. |
-| D11 | 확장은 **background 가 POST** | MV3 content script 의 cross-origin 제약 → host_permissions 가진 SW 가 담당. |
-| D12 | 업스트림 **타임아웃 + 에러종류별 폴백** | 무한 대기 방지, 헛된 재시도 방지(타임아웃엔 폴백 안 함). |
+| D1 | iframe + **server proxy** | plain iframe blocked by X-Frame-Options/CSP/cross-origin. Proxy makes it same-origin. |
+| D2 | full URL rewriting + shim runtime hooks | `<base>` alone breaks SPA dynamic fetch/import. |
+| D3 | `Sec-Fetch-Dest`-first MIME | many servers send wrong content-type (Vite `.css` module, etc.). Most reliable signal. |
+| D4 | **never** touch bare specifiers | rewriting import-map targets kills three.js et al. |
+| D5 | `redirect:'manual'` + Set-Cookie rewrite | fixes login 302 cookie loss / domain mismatch. |
+| D6 | **three separate** collection paths | proxy limits covered by render·extension. No single path does it all. |
+| D7 | render engine = **Playwright (Chromium)** | render naver/login/SPA with a real browser. ~150MB install trade-off accepted. |
+| D8 | login = **headed manual login** → storageState | captcha/2FA/social can't be automated → human logs in once, session reused. |
+| D9 | fixpoint = **file drop (inbox) + built-in AI edit** | files for the server agent to pick up; AI edit for instant preview. |
+| D10 | fixpoint markdown includes **search terms / candidate files** | agent finds source by code search instead of selector. |
+| D11 | extension **background does the POST** | MV3 content-script cross-origin limits → the host-permissioned SW handles it. |
+| D12 | upstream **timeout + error-typed fallback** | prevent infinite hangs and wasted retries (no fallback on timeout). |
 
-## C. 알려진 비-목표 (의도적 미구현)
+## C. Known non-goals (intentionally not built)
 
-- **봇차단 우회**(캡차 풀이·IP 로테이션 등): 하지 않음. 확장/세션으로 정당하게 우회.
-- **dev 번들러 완전 프록시**: 비용 대비 효과 낮음 → 확장 권장.
-- **쿠키 완전 도메인 격리**: dev 도구 수준에서 localhost 단일 세션으로 충분.
+- **Bot-block evasion** (captcha solving, IP rotation, etc.): not done. Legitimately bypass via extension/session.
+- **Full dev-bundler proxying**: low ROI → prefer the extension.
+- **Full cookie domain isolation**: a single localhost session is enough at the dev-tool level.
 
-## D. 향후 후보
+## D. Future candidates
 
-1. WebGL/캔버스 **좌표 기반 fixpoint** + 스크린샷 어노테이션.
-2. 확장에 **핀 목록 패널 / 세션 연동 / fixpoint 미리보기**.
-3. 에이전트가 inbox 를 watch 해 **자동 코드수정**까지 잇는 스크립트.
-4. `http://` 외 추가 폴백(재시도 백오프), `LIKELY_BROKEN` 거짓양성 정밀 재검증.
-5. 검증 하니스 **CI**(주기적 회귀 감지).
+1. WebGL/canvas **coordinate-based fixpoints** + screenshot annotation.
+2. Extension **pin-list panel / session integration / fixpoint preview**.
+3. A script that **watches the inbox and auto-edits code** end-to-end.
+4. Additional fallbacks beyond `http://` (retry backoff); precise re-verification of `LIKELY_BROKEN` false negatives.
+5. **CI** for the verification harness (periodic regression detection).

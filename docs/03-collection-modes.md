@@ -1,77 +1,82 @@
-# 03. 수집 경로 3종 + 로그인 세션
+# 03. Three Collection Paths + Login Session
 
-하나의 인스펙터 로직, 여러 "올라타는 방법". 수집된 fixpoint 는 모두 같은 서버 `/api/fixpoints` 로 모인다.
+One inspector logic, multiple ways to "get on the page". All collected fixpoints land at the same
+server endpoint `/api/fixpoints`.
 
-## 1. 프록시 모드 (기본)
+![Collection modes](images/collection-modes.svg)
 
-서버가 fetch → 재작성 → 인스펙터 주입 → same-origin 재서빙. → [02-proxy-engine.md](./02-proxy-engine.md)
+## 1. Proxy mode (default)
 
-- **장점**: 빠름, 인터랙션 유지(앱이 실제로 실행됨), 로컬 개발서버에 즉시.
-- **적합**: 빌드된 사이트, SSR/정적, 로컬 개발 프론트엔드.
-- **부적합**: Next/Vite **dev 모드**(하이드레이션 안 됨), 봇차단(403), 로그인 필요.
+Server fetches → rewrites → injects inspector → re-serves same-origin.
+→ [02-proxy-engine.md](./02-proxy-engine.md)
 
-`?render=1` 으로 렌더 모드, `?fresh=1` 로 스냅샷 무시 실시간.
+- **Pros**: fast, interaction preserved (the app actually runs), instant for local dev servers.
+- **Good for**: built sites, SSR/static, local dev frontends.
+- **Bad for**: Next/Vite **dev mode** (no hydration), bot-blocking (403), login required.
 
-## 2. 렌더 모드 (Playwright) — `render.js`
+`?render=1` for render mode, `?fresh=1` to bypass the snapshot and go live.
 
-헤드리스 Chromium 으로 페이지를 **실제 렌더**한 뒤 완성 DOM 을 떠 와 재작성/서빙.
+## 2. Render mode (Playwright) — `render.js`
 
-- 공유 브라우저 1개 + 요청마다 새 컨텍스트(쿠키 격리, 세션 주입 가능).
-- `renderHtml(url)`: `networkidle` 우선 → 실패 시 `load` 폴백 → 600ms 하이드레이션 여유 → `page.content()`.
-- `screenshot(url, {fullPage})`: 풀페이지 PNG.
-- `withSession(url)`: 해당 origin 의 저장된 로그인 세션을 자동 주입.
-- Playwright 미설치 시 `renderAvailable()=false`, 호출 시 `NO_RENDERER`(501).
+Headless Chromium **actually renders** the page, then the finished DOM is captured, rewritten, and served.
 
-**적합**: naver(봇차단)·SPA·Figma·로그인 후 화면을 *서버측에서* 렌더해 스냅샷/스크린샷.
-**주의**: 렌더 결과는 "완성된 DOM 스냅샷"이라 SPA 를 다시 띄우면 재마운트로 **인터랙션이 깨질 수 있다**.
-즉 "보고 핀 꽂기"엔 좋지만 "클릭하며 탐색"엔 프록시(일반)나 확장이 낫다.
+- One shared browser + a fresh context per request (cookie isolation, session injectable).
+- `renderHtml(url)`: `networkidle` first → fall back to `load` → 600ms hydration settle → `page.content()`.
+- `screenshot(url, {fullPage})`: full-page PNG.
+- `withSession(url)`: auto-injects the saved login session for that origin.
+- If Playwright isn't installed, `renderAvailable()=false`; calling it returns `NO_RENDERER` (501).
 
-실측: naver.com·mohazi.com/login·at-rpm.cloud 모두 렌더 성공(스크린샷/DOM 정상).
+**Good for**: rendering naver (bot-blocked) / SPA / Figma / post-login screens *server-side* for snapshot/screenshot.
+**Caveat**: a render result is a "finished DOM snapshot", so re-launching a SPA on top can **break
+interactivity** (re-mount). Great for "view & pin", but proxy (normal) or the extension is better for
+"click & explore".
 
-## 3. 브라우저 확장 (MV3) — `extension/` ★하드 사이트 정답
+Measured: naver.com · mohazi.com/login · at-rpm.cloud all render successfully (screenshot/DOM OK).
 
-프록시 없이 **사용자의 실제 탭**에 content script 로 인스펙터 주입. 앱이 네이티브로 하이드레이션되므로
-**프록시가 못 뚫는 모든 것**(Next dev·로그인된 화면·봇차단·CSP·Figma)을 그대로 수집.
+## 3. Browser extension (MV3) — `extension/`  ★ the answer for hard sites
+
+No proxy — injects the inspector via a content script into **the user's real tab**. The app hydrates
+natively, so it collects **everything the proxy can't** (Next dev, logged-in screens, bot-blocking, CSP, Figma).
 
 ```
-content.js (탭) → chrome.runtime.sendMessage → background.js (SW)
-              → fetch(`${server}/api/fixpoints`) → 서버 inbox
+content.js (tab) → chrome.runtime.sendMessage → background.js (SW)
+              → fetch(`${server}/api/fixpoints`) → server inbox
 ```
 
 - `manifest.json`: `content_scripts` `<all_urls>`, `host_permissions` localhost/127.0.0.1,
   background service worker, popup.
-- `content.js`: 우하단 📌 FAB 토글, hover 하이라이트, 클릭 팝오버, 핀, `cssPath`/`xPath`/`describe`,
-  `sourceClues`(단서). API 단서는 shim 없이 `PerformanceObserver('resource')` 로 수집.
-- `background.js`: MV3 에서 cross-origin fetch 를 담당(host_permissions). 서버로 POST.
-- `popup`: 서버 URL 설정(`chrome.storage`), 현재 탭 수집 모드 토글.
+- `content.js`: bottom-right 📌 FAB toggle, hover highlight, click popover, pins, `cssPath`/`xPath`/`describe`,
+  `sourceClues`. API clues are gathered without the shim via `PerformanceObserver('resource')`.
+- `background.js`: handles cross-origin fetch in MV3 (host_permissions). POSTs to the server.
+- `popup`: server URL config (`chrome.storage`), toggle collect mode for the current tab.
 
-**설치**: `chrome://extensions` → 개발자 모드 → "압축해제된 확장 로드" → `extension/` 선택 → 서버 URL 확인.
+**Install**: `chrome://extensions` → Developer mode → "Load unpacked" → select `extension/` → confirm server URL.
 
-**실측 (mohazi.com/m/studio, Next dev)**: content script 주입 ✅ / 네이티브 입장(하이드레이션) ✅ /
-수집모드·팝오버 ✅ / 서버 inbox 적재 ✅ (`fp-001.json`+`.md`, clues 에 `hero-cta`·`elis-studio-root`
-같은 실제 컴포넌트 클래스 캡처). 프록시가 못 하던 것을 확장이 100% 처리함을 확인.
+**Measured (mohazi.com/m/studio, Next dev)**: content script injected ✅ / native enter (hydration) ✅ /
+collect mode + popover ✅ / server inbox write ✅ (`fp-001.json`+`.md`, clues captured real component
+classes like `hero-cta`·`elis-studio-root`). Confirmed the extension handles 100% of what the proxy couldn't.
 
-## 4. 로그인 세션 수집 — `session.js`
+## 4. Login session capture — `session.js`
 
-봇차단·로그인 사이트의 **로그인 후 화면**을 렌더로 수집하기 위한 세션 캡처.
+Captures a session to render **post-login screens** of bot-blocked/login sites.
 
 ```
-🔐 로그인 클릭 → 서버가 헤드드(보이는) Chromium 창 띄움
-            → 사용자가 직접 로그인(캡차·2FA·소셜 전부 사람이 처리)
-            → ✅ 세션 저장 클릭 → storageState 를 sessions/<host>.json 에 저장
-            → 이후 🎭 렌더로 그 사이트 = 로그인된 화면 렌더
+Click 🔐 Login → server opens a headed (visible) Chromium window
+            → user logs in manually (captcha/2FA/social all handled by the human)
+            → Click ✅ Save session → storageState saved to sessions/<host>.json
+            → afterwards 🎭 Render that site = renders the logged-in screen
 ```
 
-- 2단계 토큰 방식: `startLogin(url)` → 창 띄우고 token 반환 / `saveLogin(token)` → storageState 저장·창 닫음.
-- `storageStateFor(url)` 로 render.js 가 해당 origin 렌더 시 자동 주입.
-- `sessionStatus`/`clearSession`. 디스플레이 없는 서버에선 `NO_DISPLAY`(501) 안내.
-- ⚠️ **세션 파일은 인증정보** → `sessions/` 는 `.gitignore`.
+- Two-step token flow: `startLogin(url)` → opens window, returns token / `saveLogin(token)` → save storageState, close window.
+- `storageStateFor(url)` lets render.js auto-inject when rendering that origin.
+- `sessionStatus`/`clearSession`. On a display-less server, returns `NO_DISPLAY` (501).
+- ⚠️ **Session files contain credentials** → `sessions/` is `.gitignore`d.
 
-## 5. 경로 선택 요약
+## 5. Path selection summary
 
-| 상황 | 경로 |
+| Situation | Path |
 |---|---|
-| 일반/빌드 사이트, 로컬 개발서버 | 프록시 |
-| 봇차단·로그인·SPA 를 서버측 스냅샷/스크린샷 | 렌더 + 🔐 세션 |
-| Next/Vite dev, 하이드레이션 하드, 로그인된 탭 | **확장** |
-| 빠른 미리보기 캐싱 + AI 편집 | 스냅샷 + AI 적용 |
+| General/built site, local dev server | Proxy |
+| Bot-blocked·login·SPA, server-side snapshot/screenshot | Render + 🔐 session |
+| Next/Vite dev, hydration-hard, logged-in tab | **Extension** |
+| Fast preview caching + AI edit | Snapshot + AI apply |
