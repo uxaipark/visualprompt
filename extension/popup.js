@@ -1,4 +1,4 @@
-// popup.js — 서버 주소 저장 + 현재 탭 수집 모드 토글.
+// popup.js — saves the server URL + toggles collect mode on the current tab.
 const $server = document.getElementById('server')
 const $enabled = document.getElementById('enabled')
 const $status = document.getElementById('status')
@@ -6,14 +6,14 @@ const $status = document.getElementById('status')
 async function init() {
   const { server } = await chrome.storage.local.get('server')
   $server.value = server || 'http://localhost:3001'
-  // 현재 탭의 수집 모드 상태 조회
+  // Query the current tab's collect mode state
   const tab = await activeTab()
   if (tab) {
     try {
       const r = await chrome.tabs.sendMessage(tab.id, { type: 'vp-get-mode' })
       $enabled.checked = !!(r && r.on)
     } catch {
-      /* content script 미주입(특수 페이지) */
+      /* content script not injected (special page) */
     }
   }
 }
@@ -29,9 +29,9 @@ document.getElementById('save').addEventListener('click', async () => {
   if (tab) {
     try {
       await chrome.tabs.sendMessage(tab.id, { type: 'vp-set-mode', on: $enabled.checked })
-      $status.textContent = '적용됨 ✓'
+      $status.textContent = 'Applied ✓'
     } catch {
-      $status.textContent = '이 페이지에선 수집할 수 없어요(브라우저 내부 페이지).'
+      $status.textContent = "Can't collect on this page (internal browser page)."
     }
   }
 })

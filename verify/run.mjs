@@ -1,5 +1,5 @@
-// verify/run.mjs — 대표 사이트들을 VP 프록시로 로드해 안정성/인터랙션을 검증한다.
-// 결과는 results.jsonl 에 증분 저장(재개 가능). 실패는 카테고리별로 분류.
+// verify/run.mjs — loads a set of representative sites through the VP proxy to verify stability/interaction.
+// Results are appended incrementally to results.jsonl (resumable). Failures are classified by category.
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -17,7 +17,7 @@ const sites = fs.readFileSync(path.join(__dirname, SITES_FILE), 'utf8')
   .split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, LIMIT)
 
 const resultsPath = path.join(__dirname, OUT_FILE)
-// 재개: 이미 처리한 도메인 스킵
+// Resume: skip domains already processed
 const done = new Set()
 if (fs.existsSync(resultsPath)) {
   for (const line of fs.readFileSync(resultsPath, 'utf8').split('\n')) {
@@ -27,11 +27,11 @@ if (fs.existsSync(resultsPath)) {
 }
 const todo = sites.filter(d => !done.has(d))
 const out = fs.createWriteStream(resultsPath, { flags: 'a' })
-log(`총 ${sites.length}개 / 남은 ${todo.length}개 / 동시성 ${CONC}`)
+log(`total ${sites.length} / remaining ${todo.length} / concurrency ${CONC}`)
 
 function log(m) { process.stdout.write(`[verify] ${m}\n`) }
 
-const ERR_PAGE = /페이지를 불러오지 못했습니다|렌더 실패|Bad url|Proxy error/
+const ERR_PAGE = /Failed to load page|Render failed|Bad url|Proxy error/
 
 async function checkSite(browser, domain) {
   const url = 'https://' + domain
@@ -61,7 +61,7 @@ async function checkSite(browser, domain) {
   } catch (e) {
     gotoErr = String(e.message).slice(0, 160)
   }
-  // 정착 대기(짧게)
+  // Wait for settling (briefly)
   try { await page.waitForLoadState('networkidle', { timeout: 4000 }) } catch {}
   await page.waitForTimeout(700)
 
@@ -78,7 +78,7 @@ async function checkSite(browser, domain) {
         : window.Vue || document.querySelector('[data-v-app]') ? 'vue'
         : document.querySelector('[ng-version]') ? 'angular'
         : root ? 'spa' : ''
-      // Next App Router: flight 데이터가 소비 안 됐으면 하이드레이션 실패
+      // Next App Router: if flight data was not consumed, hydration failed
       let nextDead = false
       try { if (self.__next_f && Array.isArray(self.__next_f) && self.__next_f.push === Array.prototype.push && self.__next_f.length > 0) nextDead = true } catch {}
       return {
@@ -88,7 +88,7 @@ async function checkSite(browser, domain) {
         inputs: q('input,textarea,select'),
         fw, fiber, nextDead,
         title: (document.title || '').slice(0, 80),
-        isErrPage: /페이지를 불러오지 못했습니다|렌더 실패/.test(body),
+        isErrPage: /Failed to load page|Render failed/.test(body),
       }
     })
   } catch (e) {
@@ -97,7 +97,7 @@ async function checkSite(browser, domain) {
 
   await ctx.close().catch(() => {})
 
-  // ── 분류
+  // ── Classification
   let category, ok = false, note = ''
   const interactiveEls = (probe.links || 0) + (probe.buttons || 0) + (probe.inputs || 0)
   if (gotoErr) { category = 'CONN_FAIL'; note = gotoErr }
@@ -107,7 +107,7 @@ async function checkSite(browser, domain) {
   else if (probe.nextDead || (probe.fw && ['next', 'nuxt', 'vue', 'angular', 'spa'].includes(probe.fw) && !probe.fiber && interactiveEls === 0 && (probe.bodyLen || 0) < 40)) {
     category = 'HYDRATION_FAIL'; note = `fw=${probe.fw} fiber=${probe.fiber} nextDead=${probe.nextDead}`
   }
-  else if (rec.proxyResFail > 8 && rec.proxyResFail > rec.reqTotal * 0.35) { category = 'CRAWL_DEGRADED'; note = `${rec.proxyResFail}/${rec.reqTotal} 리소스 실패` }
+  else if (rec.proxyResFail > 8 && rec.proxyResFail > rec.reqTotal * 0.35) { category = 'CRAWL_DEGRADED'; note = `${rec.proxyResFail}/${rec.reqTotal} resources failed` }
   else if (interactiveEls === 0 && (probe.bodyLen || 0) < 30) { category = 'LIKELY_BROKEN'; note = `interactive=0 body=${probe.bodyLen}` }
   else { category = 'OK'; ok = true }
 
@@ -123,7 +123,7 @@ async function checkSite(browser, domain) {
   return result
 }
 
-// 워커 풀
+// Worker pool
 const browser = await chromium.launch({ headless: true })
 let idx = 0, okN = 0, failN = 0
 const counts = {}
@@ -144,11 +144,11 @@ async function worker(wid) {
     counts[r.category] = (counts[r.category] || 0) + 1
     if (r.ok) okN++; else failN++
     if (n % 20 === 0 || n === todo.length) {
-      log(`${n}/${todo.length}  OK=${okN} FAIL=${failN}  최근: ${d} → ${r.category}`)
+      log(`${n}/${todo.length}  OK=${okN} FAIL=${failN}  latest: ${d} → ${r.category}`)
     }
   }
 }
 await Promise.all(Array.from({ length: CONC }, (_, i) => worker(i)))
 await browser.close()
-log('완료. 카테고리: ' + JSON.stringify(counts))
+log('Done. Categories: ' + JSON.stringify(counts))
 out.end()

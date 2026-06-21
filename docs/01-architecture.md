@@ -22,7 +22,7 @@ To cover the limits of this proxy approach (dev SPAs, bot-blocking, etc.) two mo
 
 ## 3. Components
 
-![Architecture](images/architecture.svg)
+![Architecture](images/architecture.png)
 
 ### Frontend (`client/`)
 | File | Role |
@@ -71,7 +71,7 @@ Bidirectional `postMessage`, disambiguated by the `source` field:
 
 ## 5. Data flow — how one pin is born
 
-![Pin flow](images/pin-flow.svg)
+![Pin flow](images/pin-flow.png)
 
 ```
 1. User toggles UI-prompt mode  → host: post('set-mode',{on:true})

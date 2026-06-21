@@ -1,5 +1,5 @@
-// content.js — 실제 탭에 주입되는 수집기. (iframe/프록시 없이 원본 페이지에서 직접 동작)
-// FAB 토글 → hover 하이라이트 → 클릭 팝오버 → 핀 → fixpoint 를 background 통해 VP 서버로 전송.
+// content.js — collector injected into the real tab. (Runs directly on the original page, no iframe/proxy)
+// FAB toggle → hover highlight → click popover → pin → send fixpoint to the VP server via background.
 (function () {
   if (window.__VPX_ACTIVE__) return
   window.__VPX_ACTIVE__ = true
@@ -134,7 +134,7 @@
     }
     return out
   }
-  // PerformanceObserver 로 API 호출 수집 (shim 없이)
+  // Collect API calls via PerformanceObserver (no shim)
   var API = []
   try {
     new PerformanceObserver(function (list) {
@@ -166,12 +166,12 @@
     return out
   }
 
-  // ───────────────────────────────────────────── 오버레이
+  // ───────────────────────────────────────────── overlay
   var hl = mk('div', '__vpx_hl', true)
   var tip = mk('div', '__vpx_tip', true)
   var fab = mk('button', '__vpx_fab', true)
   fab.textContent = '📌'
-  fab.title = 'VisualPrompt 수집 모드'
+  fab.title = 'VisualPrompt collect mode'
   var toast = mk('div', '__vpx_toast', true)
   function mk(tag, id, attach) {
     var n = document.createElement(tag)
@@ -192,7 +192,7 @@
     document.documentElement.classList.toggle('__vpx_mode', mode)
     fab.classList.toggle('on', mode)
     if (!mode) { hl.style.display = 'none'; tip.style.display = 'none' }
-    showToast(mode ? '수집 모드 ON — 요소를 클릭하세요' : '수집 모드 OFF')
+    showToast(mode ? 'Collect mode ON — click an element' : 'Collect mode OFF')
   }
   fab.addEventListener('click', function (e) { e.stopPropagation(); setMode(!mode) })
 
@@ -222,17 +222,17 @@
     openPopover(t)
   }, true)
 
-  // ───────────────────────────────────────────── 팝오버 + 핀
+  // ───────────────────────────────────────────── popover + pin
   var pop = null, popNode = null, pins = [], pinSeq = 0
   function openPopover(node) {
     closePopover()
     var d = describe(node)
     pop = mk('div', '__vpx_pop')
     var sel = document.createElement('div'); sel.className = '__vpx_sel'; sel.textContent = d.selector + '\n' + d.xpath
-    var ta = document.createElement('textarea'); ta.placeholder = '이 요소에 적용할 수정 프롬프트…'
+    var ta = document.createElement('textarea'); ta.placeholder = 'Edit prompt for this element…'
     var row = document.createElement('div'); row.className = '__vpx_row'
-    var cancel = document.createElement('button'); cancel.textContent = '취소'; cancel.onclick = closePopover
-    var save = document.createElement('button'); save.className = '__vpx_save'; save.textContent = '저장'
+    var cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.onclick = closePopover
+    var save = document.createElement('button'); save.className = '__vpx_save'; save.textContent = 'Save'
     save.onclick = function () { doSave(node, ta.value) }
     row.appendChild(cancel); row.appendChild(save)
     pop.appendChild(sel); pop.appendChild(ta); pop.appendChild(row)
@@ -308,19 +308,19 @@
   requestAnimationFrame(tick)
   window.addEventListener('resize', positionPopover)
 
-  // ───────────────────────────────────────────── 서버 전송
+  // ───────────────────────────────────────────── server send
   function sendFixpoint(payload) {
-    showToast('전송 중…')
+    showToast('Sending…')
     try {
       chrome.runtime.sendMessage({ type: 'vp-fixpoint', payload: payload }, function (resp) {
-        if (chrome.runtime.lastError) { showToast('전송 실패: ' + chrome.runtime.lastError.message, 3500); return }
-        if (resp && resp.ok) showToast('✅ 적재됨: ' + (resp.result && resp.result.id || 'fixpoint'))
-        else showToast('전송 실패: ' + (resp && (resp.error || resp.status) || '서버 확인'), 3500)
+        if (chrome.runtime.lastError) { showToast('Send failed: ' + chrome.runtime.lastError.message, 3500); return }
+        if (resp && resp.ok) showToast('✅ Saved: ' + (resp.result && resp.result.id || 'fixpoint'))
+        else showToast('Send failed: ' + (resp && (resp.error || resp.status) || 'check server'), 3500)
       })
-    } catch (e) { showToast('전송 실패: ' + e.message, 3500) }
+    } catch (e) { showToast('Send failed: ' + e.message, 3500) }
   }
 
-  // ───────────────────────────────────────────── popup 통신
+  // ───────────────────────────────────────────── popup messaging
   chrome.runtime.onMessage.addListener(function (msg, _s, sendResponse) {
     if (!msg) return
     if (msg.type === 'vp-get-mode') { sendResponse({ on: mode }); return }

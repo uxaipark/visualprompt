@@ -1,4 +1,4 @@
-// render-diagrams.mjs — Mermaid 정의를 Playwright 로 렌더해 docs/images/*.svg 로 저장.
+// render-diagrams.mjs — renders Mermaid definitions with Playwright and saves them as docs/images/*.svg.
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -98,19 +98,25 @@ await page.evaluate(() => window.mermaid.initialize({
   },
 }))
 
+// Render to PNG (GitHub renders PNG reliably; mermaid SVG with foreignObject can be
+// rejected as "Invalid image source" when embedded via <img>). Use 2x for crispness.
+const shot = await browser.newPage({ deviceScaleFactor: 2 })
 for (const [name, code] of Object.entries(diagrams)) {
   try {
     const svg = await page.evaluate(async (c) => {
       const { svg } = await window.mermaid.render('d_' + Math.floor(performance.now()), c)
       return svg
     }, code)
-    // 배경 흰색 보장 + 파일 저장
-    const withBg = svg.replace('<svg ', '<svg style="background:#ffffff" ')
-    fs.writeFileSync(path.join(OUT, name + '.svg'), withBg, 'utf8')
-    console.log('✓', name + '.svg', `(${withBg.length} bytes)`)
+    await shot.setContent(
+      `<!doctype html><body style="margin:0;background:#fff;display:inline-block;padding:20px">${svg}</body>`,
+      { waitUntil: 'networkidle' },
+    )
+    const el = await shot.$('svg')
+    await el.screenshot({ path: path.join(OUT, name + '.png') })
+    console.log('✓', name + '.png')
   } catch (e) {
     console.log('✗', name, '—', String(e.message).slice(0, 160))
   }
 }
 await browser.close()
-console.log('→ docs/images/ 저장 완료')
+console.log('→ docs/images/ PNG saved')

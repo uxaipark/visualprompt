@@ -1,6 +1,6 @@
-// shim.js — <head> 첫 스크립트로 주입되는 런타임 후킹 IIFE.
-// fetch/XHR/sendBeacon/element URL 프로퍼티/setAttribute 를 재작성하고,
-// history 경로 스푸핑으로 SPA 라우터의 초기 404 플래시를 막는다.
+// shim.js — runtime-hooking IIFE injected as the first script in <head>.
+// Rewrites fetch/XHR/sendBeacon/element URL properties/setAttribute, and
+// spoofs the history path to prevent the SPA router's initial 404 flash.
 (function () {
   if (window.__VP_SHIM__) return
   window.__VP_SHIM__ = true
@@ -60,7 +60,7 @@
   window.__VP_RW__ = rw
   window.__VP_UNRW__ = unrw
 
-  // ── 네트워크 로그 (백엔드 단서용)
+  // ── Network log (clues for the backend)
   var NET = (window.__VP_NET__ = window.__VP_NET__ || [])
   function logNet(method, url) {
     try {
@@ -69,9 +69,9 @@
     } catch (e) {}
   }
 
-  // ── Service Worker 무력화
-  // 프록시에선 SW 스크립트가 우리 오리진/스코프로 묶여 동작 불가하고, UI 수집과 무관하다.
-  // 깨진 SW 가 캐싱으로 페이지를 방해할 수 있어 register 를 no-op 으로 만들고 기존 등록을 해제한다.
+  // ── Disable Service Workers
+  // Under the proxy, SW scripts are bound to our origin/scope and can't work, and they're irrelevant to UI capture.
+  // A broken SW could disrupt the page via caching, so we make register a no-op and unregister existing ones.
   try {
     if (navigator.serviceWorker) {
       var swStub = {
@@ -98,7 +98,7 @@
     }
   } catch (e) {}
 
-  // ── history 경로 스푸핑: 래퍼 경로(/proxy)를 원본 경로로 바꿔치기
+  // ── History path spoofing: swap the wrapper path (/proxy) for the original path
   try {
     var b = new URL(BASE)
     var want = b.pathname + b.search + b.hash
@@ -108,7 +108,7 @@
     }
   } catch (e) {}
 
-  // ── fetch 후킹
+  // ── fetch hook
   if (window.fetch) {
     var _fetch = window.fetch.bind(window)
     window.fetch = function (input, init) {
@@ -125,7 +125,7 @@
     }
   }
 
-  // ── XMLHttpRequest.open 후킹
+  // ── XMLHttpRequest.open hook
   if (window.XMLHttpRequest) {
     var _open = XMLHttpRequest.prototype.open
     XMLHttpRequest.prototype.open = function (method, url) {
@@ -137,7 +137,7 @@
     }
   }
 
-  // ── sendBeacon 후킹
+  // ── sendBeacon hook
   if (navigator.sendBeacon) {
     var _beacon = navigator.sendBeacon.bind(navigator)
     navigator.sendBeacon = function (url, data) {
@@ -149,7 +149,7 @@
     }
   }
 
-  // ── history.pushState / replaceState — 교차 출처 SecurityError 흡수
+  // ── history.pushState / replaceState — swallow cross-origin SecurityError
   function wrapHistory(name) {
     var orig = history[name]
     if (!orig) return
@@ -168,7 +168,7 @@
   wrapHistory('pushState')
   wrapHistory('replaceState')
 
-  // ── 엘리먼트 URL 프로퍼티 세터/게터 패치
+  // ── Patch element URL property setters/getters
   function patchUrlProp(proto, prop, isSrcset) {
     if (!proto) return
     var desc = Object.getOwnPropertyDescriptor(proto, prop)
@@ -195,7 +195,7 @@
   try { patchUrlProp(HTMLSourceElement.prototype, 'src') } catch (e) {}
   try { patchUrlProp(HTMLSourceElement.prototype, 'srcset', true) } catch (e) {}
 
-  // ── setAttribute 패치 — src/srcset/(앵커 아닌)href 만
+  // ── setAttribute patch — only src/srcset/(non-anchor) href
   var _setAttr = Element.prototype.setAttribute
   Element.prototype.setAttribute = function (name, value) {
     try {

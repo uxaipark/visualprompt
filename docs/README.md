@@ -17,11 +17,11 @@ server inbox as structured documents, and let an **agent edit the real source co
 
 ## System at a glance
 
-![Architecture](images/architecture.svg)
+![Architecture](images/architecture.png)
 
 ## Choosing a collection path
 
-![Collection modes](images/collection-modes.svg)
+![Collection modes](images/collection-modes.png)
 
 | Target | Recommended path |
 |---|---|

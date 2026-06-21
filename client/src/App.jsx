@@ -48,7 +48,7 @@ export default function App() {
   pinsVisibleRef.current = pinsVisible
   snapshotRef.current = snapshot
 
-  // ── 설정 로드
+  // ── Load config
   useEffect(() => {
     fetch('/api/config')
       .then((r) => r.json())
@@ -64,17 +64,17 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 현재 타깃(local/proxy) 메타 — fixpoint 에 첨부
+  // Current target (local/proxy) meta — attached to fixpoint
   const targetRef = useRef(null)
 
-  // ── 인스펙터에 메시지 전송
+  // ── Send message to inspector
   const post = useCallback((type, payload) => {
     const win = iframeRef.current && iframeRef.current.contentWindow
     if (!win) return
     win.postMessage(Object.assign({ source: 'vp-host', type }, payload || {}), '*')
   }, [])
 
-  // ── fixpoint inbox 로드
+  // ── Load fixpoint inbox
   async function refreshFixpoints() {
     try {
       const r = await fetch('/api/fixpoints')
@@ -84,7 +84,7 @@ export default function App() {
     }
   }
 
-  // ── 인스펙터 메시지 수신
+  // ── Receive inspector messages
   useEffect(() => {
     function onMsg(e) {
       const d = e.data
@@ -126,7 +126,7 @@ export default function App() {
             snapshot: snapshotRef.current && snapshotRef.current.exists ? snapshotRef.current : null,
           }
           setEntries((prev) => [...prev, entry])
-          // ★ 서버 inbox 에 fixpoint 파일 드롭 (요구1: 서버 내 문서 적재 → 에이전트 픽업)
+          // ★ Drop fixpoint file into server inbox (req1: stage doc on server → agent pickup)
           dropFixpoint(entry)
           break
         }
@@ -171,11 +171,11 @@ export default function App() {
         refreshFixpoints()
       }
     } catch {
-      /* 서버 미동작 시 무시 — 다운로드 경로는 여전히 가능 */
+      /* Ignore if server is down — download path still works */
     }
   }
 
-  // ── URL 로드
+  // ── Load URL
   const loadUrl = useCallback((u, target) => {
     setUrl(u)
     urlRef.current = u
@@ -209,7 +209,7 @@ export default function App() {
     post('set-pins', { on })
   }
 
-  // ── 스냅샷
+  // ── Snapshot
   async function refreshSnapshot(u) {
     try {
       const r = await fetch('/api/snapshot?url=' + encodeURIComponent(u))
@@ -221,7 +221,7 @@ export default function App() {
   async function snapshotSave() {
     if (!urlRef.current) return
     setBusy(true)
-    setBanner({ kind: '', text: renderRef.current ? '렌더 스냅샷 저장 중…' : '스냅샷 저장 중…' })
+    setBanner({ kind: '', text: renderRef.current ? 'Saving render snapshot…' : 'Saving snapshot…' })
     try {
       const r = await fetch('/api/snapshot', {
         method: 'POST',
@@ -231,13 +231,13 @@ export default function App() {
       const j = await r.json()
       if (r.ok) {
         setSnapshot(j)
-        setBanner({ kind: 'ok', text: `스냅샷 저장 완료 (자원 ${j.resourceCount ?? 0}개)` })
+        setBanner({ kind: 'ok', text: `Snapshot saved (${j.resourceCount ?? 0} resources)` })
         reload()
       } else {
-        setBanner({ kind: 'err', text: '저장 실패: ' + (j.error || r.status) })
+        setBanner({ kind: 'err', text: 'Save failed: ' + (j.error || r.status) })
       }
     } catch (e) {
-      setBanner({ kind: 'err', text: '저장 실패: ' + e.message })
+      setBanner({ kind: 'err', text: 'Save failed: ' + e.message })
     } finally {
       setBusy(false)
     }
@@ -248,13 +248,13 @@ export default function App() {
     try {
       await fetch('/api/snapshot?url=' + encodeURIComponent(urlRef.current), { method: 'DELETE' })
       await refreshSnapshot(urlRef.current)
-      setBanner({ kind: 'ok', text: '스냅샷 삭제됨' })
+      setBanner({ kind: 'ok', text: 'Snapshot deleted' })
     } finally {
       setBusy(false)
     }
   }
 
-  // ── 로그인 세션 (요구: 로그인 후 화면 수집)
+  // ── Login session (req: collect screens after login)
   async function refreshSession(u) {
     try {
       const r = await fetch('/api/session?url=' + encodeURIComponent(u))
@@ -265,7 +265,7 @@ export default function App() {
   }
   async function loginStart() {
     if (!urlRef.current) return
-    setBanner({ kind: '', text: '브라우저 창을 여는 중… 창에서 로그인한 뒤 "세션 저장"을 누르세요.' })
+    setBanner({ kind: '', text: 'Opening browser window… log in there, then click "Save session".' })
     try {
       const r = await fetch('/api/session/login', {
         method: 'POST',
@@ -275,12 +275,12 @@ export default function App() {
       const j = await r.json()
       if (r.ok && j.token) {
         setLoginToken(j.token)
-        setBanner({ kind: 'ok', text: '브라우저 창에서 로그인 후 "세션 저장"을 누르세요.' })
+        setBanner({ kind: 'ok', text: 'Log in via the browser window, then click "Save session".' })
       } else {
-        setBanner({ kind: 'err', text: '로그인 창 실패: ' + (j.error || r.status) })
+        setBanner({ kind: 'err', text: 'Login window failed: ' + (j.error || r.status) })
       }
     } catch (e) {
-      setBanner({ kind: 'err', text: '로그인 창 실패: ' + e.message })
+      setBanner({ kind: 'err', text: 'Login window failed: ' + e.message })
     }
   }
   async function loginSave() {
@@ -294,29 +294,29 @@ export default function App() {
       const j = await r.json()
       setLoginToken(null)
       if (r.ok) {
-        setBanner({ kind: 'ok', text: `세션 저장됨 (${j.host}) — 이제 렌더 모드로 로그인 화면을 수집할 수 있습니다.` })
+        setBanner({ kind: 'ok', text: `Session saved (${j.host}) — you can now collect logged-in screens in render mode.` })
         refreshSession(urlRef.current)
         if (renderRef.current) reload()
       } else {
-        setBanner({ kind: 'err', text: '세션 저장 실패: ' + (j.error || r.status) })
+        setBanner({ kind: 'err', text: 'Session save failed: ' + (j.error || r.status) })
       }
     } catch (e) {
-      setBanner({ kind: 'err', text: '세션 저장 실패: ' + e.message })
+      setBanner({ kind: 'err', text: 'Session save failed: ' + e.message })
     }
   }
   async function sessionClear() {
     if (!urlRef.current) return
     await fetch('/api/session?url=' + encodeURIComponent(urlRef.current), { method: 'DELETE' })
     refreshSession(urlRef.current)
-    setBanner({ kind: 'ok', text: '세션 삭제됨' })
+    setBanner({ kind: 'ok', text: 'Session deleted' })
   }
 
-  // ── 핀 조작
+  // ── Pin actions
   const focus = (id) => post('focus', { id })
   const edit = (id) => post('edit', { id })
   const del = (id) => post('delete', { id })
 
-  // ── 추출 (요구2: 스크린샷 + MD + JSON 다운로드)
+  // ── Export (req2: screenshot + MD + JSON download)
   function exportMd() {
     download('ui-prompts.md', buildMarkdown(entries, url, views), 'text/markdown')
   }
@@ -325,12 +325,12 @@ export default function App() {
   }
   async function exportScreenshot() {
     if (!url) return
-    setBanner({ kind: '', text: '스크린샷 생성 중…' })
+    setBanner({ kind: '', text: 'Generating screenshot…' })
     try {
       await downloadScreenshot(url)
-      setBanner({ kind: 'ok', text: '스크린샷 다운로드됨' })
+      setBanner({ kind: 'ok', text: 'Screenshot downloaded' })
     } catch (e) {
-      setBanner({ kind: 'err', text: '스크린샷 실패: ' + e.message })
+      setBanner({ kind: 'err', text: 'Screenshot failed: ' + e.message })
     }
   }
   function exportAll() {
@@ -339,13 +339,13 @@ export default function App() {
     exportScreenshot()
   }
 
-  // ── AI 적용 (요구3: 크롤된 소스 수정 → 미리보기)
+  // ── AI apply (req3: edit crawled source → preview)
   async function aiApply(entry) {
     if (!snapshotRef.current || !snapshotRef.current.exists) {
-      setBanner({ kind: 'err', text: '먼저 로컬 스냅샷을 저장하세요 (AI 적용은 스냅샷 대상).' })
+      setBanner({ kind: 'err', text: 'Save a local snapshot first (AI apply targets the snapshot).' })
       return
     }
-    setBanner({ kind: '', text: 'AI 수정 중…' })
+    setBanner({ kind: '', text: 'AI editing…' })
     try {
       const r = await fetch('/api/edit', {
         method: 'POST',
@@ -354,13 +354,13 @@ export default function App() {
       })
       const j = await r.json()
       if (r.ok) {
-        setBanner({ kind: 'ok', text: 'AI 수정 적용됨 — 페이지 리로드' })
+        setBanner({ kind: 'ok', text: 'AI edit applied — reloading page' })
         reload()
       } else {
-        setBanner({ kind: 'err', text: 'AI 수정 실패: ' + (j.error || r.status) })
+        setBanner({ kind: 'err', text: 'AI edit failed: ' + (j.error || r.status) })
       }
     } catch (e) {
-      setBanner({ kind: 'err', text: 'AI 수정 실패: ' + e.message })
+      setBanner({ kind: 'err', text: 'AI edit failed: ' + e.message })
     }
   }
   async function aiApplyAll() {
@@ -370,7 +370,7 @@ export default function App() {
     }
   }
 
-  // ── fixpoint inbox 조작
+  // ── fixpoint inbox actions
   async function applyFixpoint(id) {
     await fetch(`/api/fixpoints/${id}/apply`, { method: 'POST' })
     refreshFixpoints()
@@ -412,8 +412,8 @@ export default function App() {
           ) : (
             <div className="placeholder">
               <h1>VisualPrompt</h1>
-              <p>URL 을 입력해 페이지를 불러온 뒤, <b>UI 프롬프트</b> 스위치를 켜고 요소에 수정 프롬프트를 핀으로 꽂으세요.</p>
-              <p className="muted">하드 사이트(SPA·로그인·봇차단)는 <b>🎭 렌더</b> 토글을 켜고 불러오세요.</p>
+              <p>Enter a URL to load a page, then turn on the <b>UI Prompt</b> switch and pin edit prompts onto elements.</p>
+              <p className="muted">For hard sites (SPA / login / bot blocking), turn on the <b>🎭 Render</b> toggle before loading.</p>
             </div>
           )}
         </main>

@@ -3,7 +3,7 @@
 One inspector logic, multiple ways to "get on the page". All collected fixpoints land at the same
 server endpoint `/api/fixpoints`.
 
-![Collection modes](images/collection-modes.svg)
+![Collection modes](images/collection-modes.png)
 
 ## 1. Proxy mode (default)
 

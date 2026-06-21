@@ -1,6 +1,6 @@
-// server/proxy.js — URL 재작성 엔진.
-// HTML/CSS/JS(ESM specifier·동적 import 포함) 의 모든 리소스 경로를 /proxy?url= 로
-// 재작성하고, shim·inspector 스크립트를 주입한다. ui_editor 의 검증된 로직을 모듈화했다.
+// server/proxy.js — URL rewriting engine.
+// Rewrites every resource path in HTML/CSS/JS (including ESM specifiers and dynamic imports)
+// to /proxy?url=, and injects the shim and inspector scripts. A modularized version of ui_editor's proven logic.
 import * as cheerio from 'cheerio'
 
 export const PROXY = '/proxy?url='
@@ -50,8 +50,8 @@ export function rewriteCss(css, baseUrl) {
   return out
 }
 
-// bare specifier( three, react, @scope/pkg, three/addons/... )는 import map/로더가
-// 해석하므로 절대 재작성하지 않는다. /, ./, ../, http(s):// 로 시작하는 것만 프록시 경유.
+// Bare specifiers (three, react, @scope/pkg, three/addons/...) are resolved by the import map/loader,
+// so never rewrite them. Only paths starting with /, ./, ../, or http(s):// go through the proxy.
 function isResolvableSpecifier(spec) {
   return /^(\.{0,2}\/|https?:\/\/)/i.test(spec)
 }
@@ -59,7 +59,7 @@ function rwSpec(spec, baseUrl) {
   return isResolvableSpecifier(spec) ? rwAbs(spec, baseUrl) : spec
 }
 
-// ────────────────────────────────────────── ES 모듈 specifier 재작성
+// ────────────────────────────────────────── ES module specifier rewriting
 function rewriteModuleSpecifiers(code, baseUrl) {
   if (!code) return code
   code = code.replace(
@@ -77,7 +77,7 @@ function rewriteModuleSpecifiers(code, baseUrl) {
   return code
 }
 
-// 동적 import 우회 프렐류드 (중복 prepend 가드 포함)
+// Dynamic-import shim prelude (with a guard against duplicate prepending)
 const JS_IMPORT_PRELUDE = `(function(){
 if (window.__vpImport) return;
 var OWN = /^\\/(proxy|__vp|api|snap|@|node_modules|src)\\b/;
@@ -85,7 +85,7 @@ function R(u){
   try{
     if (typeof u !== 'string') return u;
     if (u.indexOf('/proxy?url=') === 0) return u;
-    // bare specifier(import map 해석 대상)는 건드리지 않는다
+    // Leave bare specifiers (resolved by the import map) untouched
     if (!/^(\\.{0,2}\\/|https?:\\/\\/)/i.test(u)) return u;
     var abs = new URL(u, location.href);
     if (abs.origin === location.origin){
@@ -115,7 +115,7 @@ export function isJsContentType(ct) {
   return !!ct && /javascript|ecmascript/i.test(ct)
 }
 
-// ───────────────────────────────────────────────── HTML 재작성
+// ───────────────────────────────────────────────── HTML rewriting
 const RW_TARGETS = [
   ['script[src]', 'src'],
   ['img[src]', 'src'],
@@ -131,7 +131,7 @@ const RW_TARGETS = [
   ['link[href]', 'href'],
 ]
 
-// injectFn($, baseUrl) — head/body 에 shim·inspector 를 주입하는 콜백 (server/index.js 제공)
+// injectFn($, baseUrl) — callback that injects the shim and inspector into head/body (provided by server/index.js)
 export function rewriteHtmlLive(html, baseUrl, injectFn) {
   html = html.replace(
     /<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi,
@@ -167,7 +167,7 @@ export function rewriteHtmlLive(html, baseUrl, injectFn) {
   return $.html()
 }
 
-// 로컬(스냅샷/같은출처) HTML — 재작성 없이 주입만
+// Local (snapshot/same-origin) HTML — inject only, no rewriting
 export function serveLocalHtml(html, baseUrl, injectFn) {
   const $ = cheerio.load(html, { decodeEntities: false })
   if (injectFn) injectFn($, baseUrl)

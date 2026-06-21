@@ -3,7 +3,7 @@
 The final product of collection. One pin = one `fixpoints/pending/fp-NNN.{json,md}` file.
 An agent (e.g., Claude Code) running on the server reads pending, edits the real source, and moves it to applied.
 
-![Pin flow](images/pin-flow.svg)
+![Pin flow](images/pin-flow.png)
 
 ## 1. Directory structure
 

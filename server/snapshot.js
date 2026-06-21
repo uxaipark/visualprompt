@@ -1,4 +1,4 @@
-// server/snapshot.js — 전체 자원 오프라인 스냅샷 저장/조회/삭제 + AI edit(미리보기).
+// server/snapshot.js — full-resource offline snapshot save/read/delete + AI edit (preview).
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -101,7 +101,7 @@ export async function saveSnapshot(url, opts = {}) {
   let html
   let mode = 'fetch'
   if (opts.render) {
-    // 렌더 모드: 헤드리스 브라우저로 완성 DOM 크롤 (SPA/Figma/하드 사이트)
+    // Render mode: crawl the fully-built DOM with a headless browser (SPA/Figma/tough sites)
     const { renderHtml } = await import('./render.js')
     const r = await renderHtml(url)
     html = r.html
@@ -119,7 +119,7 @@ export async function saveSnapshot(url, opts = {}) {
           'user-agent':
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'accept-language': 'ko,en;q=0.9',
+          'accept-language': 'en;q=0.9',
         },
       })
     } finally {
@@ -169,7 +169,7 @@ export async function saveSnapshot(url, opts = {}) {
         fs.writeFileSync(t.file, buf)
         saved++
       } catch {
-        /* 자원 누락/타임아웃 허용 */
+        /* tolerate missing resources/timeouts */
       } finally {
         clearTimeout(tmo)
       }
@@ -199,7 +199,7 @@ export function deleteSnapshot(url) {
   }
 }
 
-// ─────────────────────────────────────────────── AI edit (Anthropic SDK, 미리보기)
+// ─────────────────────────────────────────────── AI edit (Anthropic SDK, preview)
 class EditError extends Error {
   constructor(code, message) {
     super(message || code)
@@ -209,8 +209,8 @@ class EditError extends Error {
 
 export async function editSnapshot({ url, selector, prompt }) {
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new EditError('NO_API_KEY', 'ANTHROPIC_API_KEY 가 설정되지 않았습니다.')
-  if (!hasSnapshot(url)) throw new EditError('NO_SNAPSHOT', '로컬 스냅샷이 없습니다. 먼저 저장하세요.')
+  if (!apiKey) throw new EditError('NO_API_KEY', 'ANTHROPIC_API_KEY is not set.')
+  if (!hasSnapshot(url)) throw new EditError('NO_SNAPSHOT', 'No local snapshot. Save one first.')
 
   const html = readSnapshotHtml(url)
   const $ = cheerio.load(html, { decodeEntities: false })
@@ -218,22 +218,22 @@ export async function editSnapshot({ url, selector, prompt }) {
   try {
     target = $(selector).first()
   } catch {
-    throw new EditError('NO_ELEMENT', '셀렉터가 유효하지 않습니다: ' + selector)
+    throw new EditError('NO_ELEMENT', 'Invalid selector: ' + selector)
   }
   if (!target || target.length === 0) {
-    throw new EditError('NO_ELEMENT', '요소를 찾을 수 없습니다: ' + selector)
+    throw new EditError('NO_ELEMENT', 'Element not found: ' + selector)
   }
   const original = $.html(target)
-  if (original.length > 200_000) throw new EditError('TOO_LARGE', '대상 요소가 너무 큽니다.')
+  if (original.length > 200_000) throw new EditError('TOO_LARGE', 'Target element is too large.')
 
   const { default: Anthropic } = await import('@anthropic-ai/sdk')
   const client = new Anthropic({ apiKey })
 
   const sys =
-    '너는 정밀한 HTML 편집기다. 주어진 요소의 outerHTML 하나를 사용자 지시대로 수정해 ' +
-    '수정된 outerHTML 만 반환한다. 설명/코드펜스 없이 HTML 만 출력한다. ' +
-    '구조(태그/속성)는 지시에 필요한 만큼만 바꾸고, 클래스/식별자는 가급적 보존한다.'
-  const user = `대상 요소 outerHTML:\n${original}\n\n수정 지시:\n${prompt}\n\n수정된 outerHTML 만 출력:`
+    'You are a precise HTML editor. Modify the single given element outerHTML per the user instruction ' +
+    'and return only the modified outerHTML. Output HTML only, with no explanation or code fences. ' +
+    'Change the structure (tags/attributes) only as much as the instruction requires, and preserve classes/identifiers where possible.'
+  const user = `Target element outerHTML:\n${original}\n\nEdit instruction:\n${prompt}\n\nOutput only the modified outerHTML:`
 
   let resp
   try {
@@ -244,7 +244,7 @@ export async function editSnapshot({ url, selector, prompt }) {
       messages: [{ role: 'user', content: user }],
     })
   } catch (err) {
-    throw new EditError('EMPTY', 'AI 호출 실패: ' + String(err && err.message))
+    throw new EditError('EMPTY', 'AI call failed: ' + String(err && err.message))
   }
 
   let edited = ''
@@ -252,7 +252,7 @@ export async function editSnapshot({ url, selector, prompt }) {
     if (block.type === 'text') edited += block.text
   }
   edited = edited.trim().replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim()
-  if (!edited) throw new EditError('EMPTY', 'AI 응답이 비었습니다.')
+  if (!edited) throw new EditError('EMPTY', 'Empty AI response.')
 
   target.replaceWith(edited)
   fs.writeFileSync(htmlPathFor(url), $.html(), 'utf8')

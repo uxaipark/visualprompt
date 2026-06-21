@@ -1,4 +1,4 @@
-// ext-test.mjs — 확장을 로드해 원본 mohazi.com/m/studio 에서 수집 실측.
+// ext-test.mjs — loads the extension and measures collection on the original mohazi.com/m/studio.
 import { chromium } from 'playwright'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,60 +24,60 @@ const page = await ctx.newPage()
 page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 120)))
 
 try {
-  log('확장 로드 + 원본 페이지 접속:', TARGET)
+  log('Load extension + open original page:', TARGET)
   await page.goto(TARGET, { waitUntil: 'networkidle', timeout: 45000 }).catch((e) => errs.push('goto:' + e.message))
   await page.waitForTimeout(3000)
 
-  // 1) content script 주입 확인 (FAB)
+  // 1) Verify content script injection (FAB)
   const fab = await page.locator('#__vpx_fab').count()
-  log('content script 주입(FAB):', fab ? '✅ 있음' : '❌ 없음')
+  log('content script injection (FAB):', fab ? '✅ present' : '❌ missing')
 
-  // 2) 네이티브 하이드레이션 — 입장 클릭이 동작하나
+  // 2) Native hydration — does the enter click work
   const before = (await page.evaluate(() => document.body.innerText.slice(0, 40)))
   await page.mouse.click(640, 430)
   await page.waitForTimeout(3000)
   const after = (await page.evaluate(() => document.body.innerText.slice(0, 40)))
   const entered = before !== after
-  log('입장(하이드레이션):', entered ? '✅ 화면 전환됨' : '⚠ 변화 없음', `(${JSON.stringify(before)} → ${JSON.stringify(after)})`)
+  log('enter (hydration):', entered ? '✅ screen changed' : '⚠ no change', `(${JSON.stringify(before)} → ${JSON.stringify(after)})`)
 
-  // 3) 수집 모드 ON (FAB 클릭)
+  // 3) Collection mode ON (FAB click)
   await page.locator('#__vpx_fab').click().catch(() => {})
   await page.waitForTimeout(600)
   const modeOn = await page.evaluate(() => document.getElementById('__vpx_fab')?.classList.contains('on'))
-  log('수집 모드:', modeOn ? '✅ ON' : '❌ OFF')
+  log('collection mode:', modeOn ? '✅ ON' : '❌ OFF')
 
-  // 4) 요소 클릭 → 팝오버 → 프롬프트 → 저장
+  // 4) Click element → popover → prompt → save
   await page.mouse.click(640, 300)
   await page.waitForTimeout(800)
   const popCount = await page.locator('#__vpx_pop textarea').count()
-  log('팝오버:', popCount ? '✅ 떴음' : '❌ 안 뜸')
+  log('popover:', popCount ? '✅ shown' : '❌ not shown')
   let posted = false
   if (popCount) {
-    await page.locator('#__vpx_pop textarea').fill('이 영역의 카세트/트랙 라벨 폰트를 더 크고 또렷하게 바꿔줘')
+    await page.locator('#__vpx_pop textarea').fill('Make the cassette/track label font in this area larger and crisper')
     await page.locator('#__vpx_pop .__vpx_save').click()
     await page.waitForTimeout(2000)
     const toast = await page.evaluate(() => document.getElementById('__vpx_toast')?.textContent || '')
-    log('전송 토스트:', JSON.stringify(toast))
-    posted = /적재|fp-/.test(toast)
+    log('submit toast:', JSON.stringify(toast))
+    posted = /Saved|fp-/.test(toast)
   }
 
-  // 5) 서버 inbox 에 실제 적재됐나 (확장 페이지 컨텍스트에서 조회)
+  // 5) Was it actually written to the server inbox (queried from the extension page context)
   const fps = await page.evaluate(async () => {
     try { return await (await fetch('http://localhost:3001/api/fixpoints')).json() }
     catch (e) { return { err: String(e.message) } }
   })
   const pend = (fps.pending || [])
-  log('서버 fixpoints/pending:', pend.length, '건')
+  log('server fixpoints/pending:', pend.length, 'items')
   if (pend.length) {
     const last = pend[pend.length - 1]
     console.log('   →', last.id, '| target:', JSON.stringify(last.target), '| selector:', last.element?.selector, '| prompt:', (last.prompt || '').slice(0, 40))
   }
 
-  console.log('\n=== 실측 결과 ===')
-  console.log('content script 주입:', fab ? 'OK' : 'FAIL')
-  console.log('네이티브 입장      :', entered ? 'OK' : 'PARTIAL')
-  console.log('수집모드/팝오버    :', modeOn && popCount ? 'OK' : 'CHECK')
-  console.log('서버 적재          :', pend.length ? `OK (${pend.length}건)` : 'FAIL')
+  console.log('\n=== Measured results ===')
+  console.log('content script injection:', fab ? 'OK' : 'FAIL')
+  console.log('native enter            :', entered ? 'OK' : 'PARTIAL')
+  console.log('collection mode/popover :', modeOn && popCount ? 'OK' : 'CHECK')
+  console.log('server write            :', pend.length ? `OK (${pend.length} items)` : 'FAIL')
   if (errs.length) console.log('pageerror:', errs.slice(0, 3).join(' | '))
 } finally {
   await ctx.close()

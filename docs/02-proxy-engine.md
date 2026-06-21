@@ -4,7 +4,7 @@
 `server/public/shim.js` (runtime hooks). The core logic, hardened against real-world sites.
 Each item: **why it's needed** and **how it works**.
 
-![Proxy request handling](images/proxy-flow.svg)
+![Proxy request handling](images/proxy-flow.png)
 
 ## 1. URL rewriting — static (proxy.js)
 

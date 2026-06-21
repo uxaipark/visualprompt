@@ -1,5 +1,5 @@
-// background.js — service worker. content script 의 fixpoint 를 VP 서버로 POST 한다.
-// (MV3 에서 cross-origin fetch 는 host_permissions 를 가진 service worker 가 담당)
+// background.js — service worker. POSTs the content script's fixpoint to the VP server.
+// (In MV3, cross-origin fetch is handled by the service worker that holds host_permissions)
 
 const DEFAULT_SERVER = 'http://localhost:3001'
 

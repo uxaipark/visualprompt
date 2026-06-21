@@ -1,6 +1,6 @@
-// server/inbox.js — fixpoint(수정 포인트) inbox.
-// 핀 하나 = pending/fp-NNN.{json,md} 파일 하나. 서버에서 도는 에이전트(Claude Code 등)가
-// pending 을 읽어 실제 소스를 고치고 applied 로 옮긴다.
+// server/inbox.js — fixpoint (edit point) inbox.
+// One pin = one pending/fp-NNN.{json,md} file pair. An agent running on the server (Claude Code, etc.)
+// reads pending, edits the actual source, and moves it to applied.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,7 +18,7 @@ function ensureDirs() {
   fs.mkdirSync(APPLIED, { recursive: true })
 }
 
-// 다음 일련번호 — pending/applied 양쪽의 fp-NNN 중 최대 +1
+// Next sequence number — max fp-NNN across both pending/applied, +1
 function nextSeq() {
   let max = 0
   for (const dir of [PENDING, APPLIED]) {
@@ -26,7 +26,7 @@ function nextSeq() {
     try {
       names = fs.readdirSync(dir)
     } catch {
-      /* 없으면 0 */
+      /* none -> 0 */
     }
     for (const n of names) {
       const m = n.match(/^fp-(\d+)\./)
@@ -38,7 +38,7 @@ function nextSeq() {
 
 const pad = (n) => String(n).padStart(3, '0')
 
-// ─────────────────────────────────────── 검색어/힌트 도출 (exporters 와 동일 규칙)
+// ─────────────────────────────────────── Search-term/hint derivation (same rules as exporters)
 function frontendSearchTerms(clues) {
   if (!clues) return []
   const terms = []
@@ -54,51 +54,51 @@ function backendApiPaths(clues) {
   return clues.api.map((a) => `${a.method} ${a.path}`)
 }
 
-// ─────────────────────────────────────── 단일 fixpoint markdown
+// ─────────────────────────────────────── Single fixpoint markdown
 function fixpointMarkdown(fp) {
   const el = fp.element || {}
   const clues = fp.clues || {}
   const L = []
   L.push(`# Fixpoint ${fp.id}`)
   L.push('')
-  L.push(`> 상태: **pending** · 생성: ${fp.createdAt}`)
+  L.push(`> status: **pending** · created: ${fp.createdAt}`)
   L.push('')
-  L.push(`## 수정 지시 (사용자 프롬프트)`)
+  L.push(`## Edit instruction (user prompt)`)
   L.push('')
-  L.push(fp.prompt || '(없음)')
+  L.push(fp.prompt || '(none)')
   L.push('')
-  L.push(`## 대상 요소`)
+  L.push(`## Target element`)
   L.push('')
-  L.push(`- **태그**: \`${el.tag || ''}${el.id ? '#' + el.id : ''}\``)
+  L.push(`- **tag**: \`${el.tag || ''}${el.id ? '#' + el.id : ''}\``)
   L.push(`- **selector**: \`${el.selector || ''}\``)
   L.push(`- **xpath**: \`${el.xpath || ''}\``)
-  if (el.rect) L.push(`- **위치**: x=${el.rect.x} y=${el.rect.y} w=${el.rect.w} h=${el.rect.h}`)
-  if (el.text) L.push(`- **텍스트**: ${el.text}`)
+  if (el.rect) L.push(`- **position**: x=${el.rect.x} y=${el.rect.y} w=${el.rect.w} h=${el.rect.h}`)
+  if (el.text) L.push(`- **text**: ${el.text}`)
   L.push('')
-  L.push(`## 페이지 / 뷰`)
+  L.push(`## Page / view`)
   L.push('')
   L.push(`- **page**: \`${fp.page || ''}\``)
   if (fp.target?.mode) L.push(`- **mode**: ${fp.target.mode}${fp.target.repoRoot ? ` (repoRoot: \`${fp.target.repoRoot}\`)` : ''}`)
   if (fp.view) L.push(`- **view**: ${fp.view.title || ''}${fp.view.heading ? ' / ' + fp.view.heading : ''}`)
   if (clues.framework) L.push(`- **framework**: ${clues.framework}`)
   L.push('')
-  L.push(`## 소스코드에서 찾을 단서`)
+  L.push(`## Source-code search clues`)
   L.push('')
   const fe = frontendSearchTerms(clues)
-  if (fe.length) L.push(`- **프론트엔드 검색어**: ${fe.map((t) => `\`${t}\``).join(', ')}`)
+  if (fe.length) L.push(`- **Frontend search terms**: ${fe.map((t) => `\`${t}\``).join(', ')}`)
   const be = backendApiPaths(clues)
-  if (be.length) L.push(`- **백엔드 API 경로**: ${be.map((t) => `\`${t}\``).join(', ')}`)
-  if (clues.bundles?.length) L.push(`- **번들**: ${clues.bundles.slice(0, 6).map((b) => `\`${b}\``).join(', ')}`)
-  if (fp.fileHints?.length) L.push(`- **추정 파일**: ${fp.fileHints.map((f) => `\`${f}\``).join(', ')}`)
+  if (be.length) L.push(`- **Backend API paths**: ${be.map((t) => `\`${t}\``).join(', ')}`)
+  if (clues.bundles?.length) L.push(`- **Bundles**: ${clues.bundles.slice(0, 6).map((b) => `\`${b}\``).join(', ')}`)
+  if (fp.fileHints?.length) L.push(`- **Candidate files**: ${fp.fileHints.map((f) => `\`${f}\``).join(', ')}`)
   L.push('')
   L.push('---')
-  L.push('> 에이전트: 위 검색어로 레포에서 해당 소스를 찾아 "수정 지시"대로 고치고,')
-  L.push('> 처리 후 이 파일을 `fixpoints/applied/` 로 옮기세요.')
+  L.push('> Agent: find the source in the repo using the search terms above, edit per the "Edit instruction",')
+  L.push('> then move this file to `fixpoints/applied/`.')
   return L.join('\n')
 }
 
-// ─────────────────────────────────────── 파일 경로 힌트(local 모드)
-// repoRoot 가 있으면 selector/단서를 단순 추론으로 후보 경로화 (확정 아님, 힌트)
+// ─────────────────────────────────────── File-path hints (local mode)
+// If repoRoot is present, derive candidate paths from selector/clues via simple inference (hints, not definitive)
 function deriveFileHints(fp) {
   const hints = []
   const clues = fp.clues || {}
@@ -107,7 +107,7 @@ function deriveFileHints(fp) {
   return hints.slice(0, 8)
 }
 
-// ─────────────────────────────────────── 공개 API
+// ─────────────────────────────────────── Public API
 export function saveFixpoint(input) {
   ensureDirs()
   const seq = nextSeq()
@@ -194,30 +194,30 @@ export function deleteFixpoint(id) {
   return { ok: removed > 0, id, removed }
 }
 
-// ─────────────────────────────────────── 에이전트 지침서
+// ─────────────────────────────────────── Agent instructions
 function writeAgentReadme() {
-  const txt = `# 에이전트 작업 지침 (fixpoints inbox)
+  const txt = `# Agent instructions (fixpoints inbox)
 
-이 디렉토리는 **VisualPrompt** 가 수집한 "수정 포인트(fixpoint)" 의 inbox 입니다.
+This directory is the inbox of "fixpoints" (edit points) collected by **VisualPrompt**.
 
-## 구조
-- \`pending/\` — 아직 처리되지 않은 fixpoint. \`fp-NNN.json\` (구조화 데이터) + \`fp-NNN.md\` (사람/에이전트용 요약).
-- \`applied/\` — 처리 완료해 옮겨진 fixpoint.
+## Structure
+- \`pending/\` — fixpoints not yet processed. \`fp-NNN.json\` (structured data) + \`fp-NNN.md\` (summary for humans/agents).
+- \`applied/\` — fixpoints that have been processed and moved here.
 
-## 처리 절차
-1. \`pending/\` 의 각 \`fp-NNN.md\` 를 읽는다.
-2. "수정 지시" 와 "소스코드에서 찾을 단서"(검색어/추정 파일)를 사용해 레포에서 대상 소스를 찾는다.
-   - 프론트엔드 검색어: \`data-testid=...\`, \`.class\`, \`#id\`, \`component:...\` 로 grep.
-   - \`target.repoRoot\` 가 있으면 그 레포 안에서 찾는다 (local 모드).
-3. 지시대로 소스를 수정한다. 타깃 요소만 정확히 고치고 무관한 코드는 건드리지 않는다.
-4. 처리한 fixpoint 파일(\`.json\`, \`.md\`)을 \`applied/\` 로 옮긴다.
+## Processing steps
+1. Read each \`fp-NNN.md\` in \`pending/\`.
+2. Use the "Edit instruction" and the "Source-code search clues" (search terms/candidate files) to find the target source in the repo.
+   - Frontend search terms: grep for \`data-testid=...\`, \`.class\`, \`#id\`, \`component:...\`.
+   - If \`target.repoRoot\` is present, search within that repo (local mode).
+3. Edit the source per the instruction. Change only the target element precisely and do not touch unrelated code.
+4. Move the processed fixpoint files (\`.json\`, \`.md\`) to \`applied/\`.
 
-## json 스키마 핵심 필드
-- \`prompt\`     — 사용자가 작성한 수정 지시
+## Key JSON schema fields
+- \`prompt\`     — the edit instruction written by the user
 - \`element\`    — { tag, id, selector, xpath, rect, text, classes }
 - \`clues\`      — { framework, testids, components, ids, labels, classes, bundles, api }
 - \`sourceHints\`— { frontend: [...], backend: [...] }
-- \`fileHints\`  — 추정 파일 glob/grep 후보
+- \`fileHints\`  — candidate file glob/grep patterns
 - \`target\`     — { mode: 'local'|'proxy', url, repoRoot }
 `
   try {

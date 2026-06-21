@@ -1,10 +1,10 @@
-// inspector.js — <body> 끝에 주입되는 IIFE.
-// hover 하이라이트, 클릭 선택, 프롬프트 팝오버, 번호 핀, locator 캡처,
-// 클릭형 화면(뷰) 추적, 소스코드 단서 수집, 호스트와 postMessage 통신.
+// inspector.js — IIFE injected at the end of <body>.
+// Hover highlight, click selection, prompt popover, numbered pins, locator capture,
+// click-driven view tracking, source-code clue gathering, and postMessage communication with the host.
 (function () {
   if (window.__VP_ACTIVE__) return
 
-  // 최상위 프록시 프레임에서만 동작 (중첩/하위 iframe 무시)
+  // Only run in the top-level proxy frame (ignore nested/child iframes)
   try {
     var fe = window.frameElement
     if (!fe || !/\bpage-frame\b/.test(fe.className || '')) return
@@ -17,7 +17,7 @@
   var rw = window.__VP_RW__ || function (u) { return u }
   var unrw = window.__VP_UNRW__ || function (u) { return u }
 
-  // ───────────────────────────────────────────── 오버레이 DOM + 스타일
+  // ───────────────────────────────────────────── Overlay DOM + styles
   var style = document.createElement('style')
   style.textContent = [
     '.__vp_mode, .__vp_mode * { cursor: crosshair !important; }',
@@ -46,7 +46,7 @@
     return n
   }
 
-  // ───────────────────────────────────────────── 로케이터
+  // ───────────────────────────────────────────── Locators
   function cssPath(node) {
     if (!node || node.nodeType !== 1) return ''
     if (node.id) return '#' + cssEscape(node.id)
@@ -130,7 +130,7 @@
     }
   }
 
-  // ───────────────────────────────────────────── 화면(뷰) 추적 상태
+  // ───────────────────────────────────────────── View-tracking state
   var vIdx = 0
   var lastClickInfo = null
   var lastClickAt = 0
@@ -298,7 +298,7 @@
     if (arr.indexOf(v) < 0) arr.push(v)
   }
 
-  // ───────────────────────────────────────────── 뷰 보고
+  // ───────────────────────────────────────────── View reporting
   function postView(trigger, reason) {
     var title = document.title || ''
     var heading = headingText()
@@ -358,7 +358,7 @@
   window.addEventListener('popstate', function () { postView(recentClick(), 'popstate') })
   window.addEventListener('hashchange', function () { postView(recentClick(), 'hashchange') })
 
-  // ───────────────────────────────────────────── 프롬프트 모드 + 핀
+  // ───────────────────────────────────────────── Prompt mode + pins
   var promptMode = false
   var pinsVisible = true
   var pins = []
@@ -431,7 +431,7 @@
     true,
   )
 
-  // ───────────────────────────────────────────── 팝오버
+  // ───────────────────────────────────────────── Popover
   function openPopover(node, existing) {
     closePopover()
     var d = describe(node)
@@ -439,21 +439,21 @@
     var sel = el('div', { class: '__vp_sel' })
     sel.textContent = d.selector + '\n' + d.xpath
     var ta = el('textarea')
-    ta.placeholder = '이 요소에 적용할 수정 프롬프트…'
+    ta.placeholder = 'Edit prompt for this element…'
     if (existing) ta.value = existing.item.prompt || ''
     var row = el('div', { class: '__vp_row' })
 
     if (existing) {
       var del = el('button', { class: '__vp_del' })
-      del.textContent = '삭제'
+      del.textContent = 'Delete'
       del.onclick = function () { deletePin(existing.id); closePopover() }
       row.appendChild(del)
     }
     var cancel = el('button')
-    cancel.textContent = '취소'
+    cancel.textContent = 'Cancel'
     cancel.onclick = closePopover
     var save = el('button', { class: '__vp_save' })
-    save.textContent = '저장'
+    save.textContent = 'Save'
     save.onclick = function () { doSave(node, ta.value, existing) }
     row.appendChild(cancel)
     row.appendChild(save)
@@ -547,7 +547,7 @@
     }
   }
 
-  // ───────────────────────────────────────────── rAF 위치 추적 루프
+  // ───────────────────────────────────────────── rAF position-tracking loop
   function tick() {
     if (!pinsVisible) {
       for (var k = 0; k < pins.length; k++) if (pins[k].pinEl) pins[k].pinEl.style.display = 'none'
@@ -574,7 +574,7 @@
   }
   requestAnimationFrame(tick)
 
-  // ───────────────────────────────────────────── 복원
+  // ───────────────────────────────────────────── Restore
   function restoreItem(item, retries) {
     retries = retries == null ? 12 : retries
     var node = locate(item.element)
@@ -611,7 +611,7 @@
     closePopover()
   }
 
-  // ───────────────────────────────────────────── 호스트 통신
+  // ───────────────────────────────────────────── Host communication
   function send(type, payload) {
     try {
       parent.postMessage(Object.assign({ source: 'vp', type: type }, payload || {}), '*')

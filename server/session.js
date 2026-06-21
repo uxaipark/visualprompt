@@ -1,7 +1,7 @@
-// server/session.js — 로그인 세션 수집.
-// 헤드드(보이는) Chromium 창을 띄워 사용자가 직접 로그인하면, 그 origin 의
-// storageState(쿠키+localStorage)를 저장한다. 이후 렌더/스냅샷/스크린샷은 그 세션으로 동작.
-// ⚠ 세션 파일은 인증정보를 담으므로 sessions/ 는 .gitignore 대상이다.
+// server/session.js — login session capture.
+// Opens a headed (visible) Chromium window so the user can log in themselves, then saves
+// that origin's storageState (cookies + localStorage). Subsequent render/snapshot/screenshot runs use that session.
+// ⚠ Session files hold credentials, so sessions/ is gitignored.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,7 +37,7 @@ export function hasSession(url) {
   }
 }
 
-// render.js 가 사용할 storageState 파일 경로 (없으면 null)
+// storageState file path for render.js to use (null if none)
 export function storageStateFor(url) {
   return hasSession(url) ? sessionPath(url) : null
 }
@@ -61,7 +61,7 @@ export function clearSession(url) {
   }
 }
 
-// ─────────────────────────────────────────── 인터랙티브 로그인 (2단계)
+// ─────────────────────────────────────────── interactive login (2 steps)
 let _counter = 0
 const _live = new Map() // token -> { browser, context, url }
 
@@ -70,7 +70,7 @@ export async function startLogin(url) {
   try {
     pw = await import('playwright')
   } catch {
-    const e = new Error('Playwright 가 설치되지 않았습니다.')
+    const e = new Error('Playwright is not installed.')
     e.code = 'NO_RENDERER'
     throw e
   }
@@ -78,7 +78,7 @@ export async function startLogin(url) {
   try {
     browser = await pw.chromium.launch({ headless: false })
   } catch (err) {
-    const e = new Error('브라우저 창을 띄울 수 없습니다(디스플레이 없음?). ' + (err && err.message))
+    const e = new Error('Cannot open a browser window (no display?). ' + (err && err.message))
     e.code = 'NO_DISPLAY'
     throw e
   }
@@ -99,7 +99,7 @@ export async function startLogin(url) {
 export async function saveLogin(token) {
   const rec = _live.get(token)
   if (!rec) {
-    const e = new Error('로그인 세션이 만료되었거나 없습니다.')
+    const e = new Error('Login session expired or missing.')
     e.code = 'NO_LOGIN'
     throw e
   }

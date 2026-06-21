@@ -1,4 +1,4 @@
-// exporters.js — 수집된 핀들을 수정 하니스(markdown/json)로 변환 + 스크린샷 다운로드.
+// exporters.js — Convert collected pins into a modification harness (markdown/json) + screenshot download.
 
 function frontendSearchTerms(clues) {
   if (!clues) return []
@@ -18,61 +18,61 @@ function backendApiPaths(clues) {
 
 export function buildMarkdown(entries, pageUrl, views = []) {
   const lines = []
-  lines.push(`# UI 수정 하니스 (Modification Harness)`)
+  lines.push(`# UI Modification Harness`)
   lines.push('')
-  lines.push(`- 기준 페이지: \`${pageUrl || '(none)'}\``)
-  lines.push(`- 핀 개수: ${entries.length}`)
-  lines.push(`- 생성: ${new Date().toISOString()}`)
+  lines.push(`- Base page: \`${pageUrl || '(none)'}\``)
+  lines.push(`- Pin count: ${entries.length}`)
+  lines.push(`- Generated: ${new Date().toISOString()}`)
   lines.push('')
 
   if (views && views.length) {
-    lines.push(`## 🧭 탐색 기록 (클릭 → 화면)`)
+    lines.push(`## 🧭 Navigation history (click → screen)`)
     lines.push('')
     views.forEach((v, i) => {
-      const trig = v.trigger ? `클릭: "${v.trigger.text || v.trigger.label || v.trigger.selector}"` : `(${v.reason || 'load'})`
-      lines.push(`${i + 1}. **${v.title || '(제목 없음)'}** — ${trig}`)
-      if (v.heading) lines.push(`   - 헤딩: ${v.heading}`)
+      const trig = v.trigger ? `Click: "${v.trigger.text || v.trigger.label || v.trigger.selector}"` : `(${v.reason || 'load'})`
+      lines.push(`${i + 1}. **${v.title || '(no title)'}** — ${trig}`)
+      if (v.heading) lines.push(`   - Heading: ${v.heading}`)
       if (v.url) lines.push(`   - URL: \`${v.url}\``)
-      if (v.framework) lines.push(`   - 프레임워크: ${v.framework}`)
+      if (v.framework) lines.push(`   - Framework: ${v.framework}`)
       if (v.apiCalls && v.apiCalls.length) {
-        lines.push(`   - 호출 API: ${v.apiCalls.map((a) => `\`${a.method} ${a.path}\``).join(', ')}`)
+        lines.push(`   - API calls: ${v.apiCalls.map((a) => `\`${a.method} ${a.path}\``).join(', ')}`)
       }
     })
     lines.push('')
   }
 
-  lines.push(`## 핀 목록`)
+  lines.push(`## Pins`)
   lines.push('')
   entries.forEach((e, i) => {
     const el = e.element || {}
     lines.push(`### ${i + 1}. ${el.tag || 'element'}${el.id ? '#' + el.id : ''}`)
     lines.push('')
-    lines.push(`- **프롬프트**: ${e.prompt}`)
+    lines.push(`- **Prompt**: ${e.prompt}`)
     if (e.view) {
-      lines.push(`- **화면(뷰)**: ${e.view.title || ''}${e.view.heading ? ' / ' + e.view.heading : ''}`)
+      lines.push(`- **Screen (view)**: ${e.view.title || ''}${e.view.heading ? ' / ' + e.view.heading : ''}`)
     }
     lines.push(`- **selector**: \`${el.selector || ''}\``)
     lines.push(`- **xpath**: \`${el.xpath || ''}\``)
-    if (el.rect) lines.push(`- **위치**: x=${el.rect.x} y=${el.rect.y} w=${el.rect.w} h=${el.rect.h}`)
-    if (el.text) lines.push(`- **텍스트**: ${el.text}`)
+    if (el.rect) lines.push(`- **Position**: x=${el.rect.x} y=${el.rect.y} w=${el.rect.w} h=${el.rect.h}`)
+    if (el.text) lines.push(`- **Text**: ${el.text}`)
 
     const clues = e.clues
     if (clues) {
-      lines.push(`- **소스코드 단서**:`)
-      if (clues.framework) lines.push(`  - 프레임워크: ${clues.framework}`)
+      lines.push(`- **Source-code clues**:`)
+      if (clues.framework) lines.push(`  - Framework: ${clues.framework}`)
       const fe = frontendSearchTerms(clues)
-      if (fe.length) lines.push(`  - 프론트엔드 검색어(코드에서 찾기): ${fe.map((t) => `\`${t}\``).join(', ')}`)
+      if (fe.length) lines.push(`  - Frontend search terms (find in code): ${fe.map((t) => `\`${t}\``).join(', ')}`)
       if (clues.bundles && clues.bundles.length) {
-        lines.push(`  - 번들: ${clues.bundles.slice(0, 6).map((b) => `\`${b}\``).join(', ')}`)
+        lines.push(`  - Bundles: ${clues.bundles.slice(0, 6).map((b) => `\`${b}\``).join(', ')}`)
       }
       const be = backendApiPaths(clues)
-      if (be.length) lines.push(`  - 백엔드 API 경로(서버 코드에서 찾기): ${be.map((t) => `\`${t}\``).join(', ')}`)
+      if (be.length) lines.push(`  - Backend API paths (find in server code): ${be.map((t) => `\`${t}\``).join(', ')}`)
     }
     lines.push('')
   })
 
   lines.push('---')
-  lines.push('> 프론트엔드는 위 "검색어"로, 백엔드는 "API 경로"로 소스 코드를 찾아 타깃만 수정하세요.')
+  lines.push('> For the frontend, locate source code using the "search terms" above; for the backend, use the "API paths". Edit only the targets.')
   return lines.join('\n')
 }
 
@@ -104,7 +104,7 @@ export function buildJson(entries, pageUrl, views = []) {
   }
 }
 
-// 브라우저 다운로드 헬퍼
+// Browser download helper
 export function download(name, text, type) {
   const blob = new Blob([text], { type })
   triggerDownload(name, URL.createObjectURL(blob))
@@ -118,7 +118,7 @@ function triggerDownload(name, href) {
   setTimeout(() => URL.revokeObjectURL(href), 1000)
 }
 
-// 서버 렌더 스크린샷 PNG 다운로드 (요구2)
+// Download server-rendered screenshot PNG (req2)
 export async function downloadScreenshot(pageUrl) {
   const r = await fetch('/api/screenshot?url=' + encodeURIComponent(pageUrl))
   if (!r.ok) {

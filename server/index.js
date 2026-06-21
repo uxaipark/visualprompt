@@ -1,5 +1,5 @@
-// VisualPrompt — Express 서버
-// /proxy, /api/*, /__vp/*, /snap, 정적 서빙. local(개발서버) / proxy(외부) 두 타깃 모드.
+// VisualPrompt — Express server
+// /proxy, /api/*, /__vp/*, /snap, static serving. Two target modes: local (dev server) / proxy (external).
 import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -40,7 +40,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..')
 
-// ───────────────────────────────────────────────────────────── .env 로더
+// ───────────────────────────────────────────────────────────── .env loader
 function loadEnv() {
   try {
     const raw = fs.readFileSync(path.join(ROOT, '.env'), 'utf8')
@@ -57,12 +57,12 @@ function loadEnv() {
       if (!(key in process.env)) process.env[key] = val
     }
   } catch {
-    /* .env 없으면 무시 */
+    /* ignore if .env is missing */
   }
 }
 loadEnv()
 
-// ───────────────────────────────────────────────────────────── 설정 로더
+// ───────────────────────────────────────────────────────────── config loader
 function loadConfig() {
   try {
     return JSON.parse(fs.readFileSync(path.join(ROOT, 'fixpin.config.json'), 'utf8'))
@@ -76,14 +76,14 @@ const PORT = process.env.PORT || 3001
 const isProd = process.env.NODE_ENV === 'production'
 
 const app = express()
-// /proxy 는 원본 바디를 그대로 업스트림에 전달해야 하므로 JSON 파싱에서 제외한다.
+// /proxy must forward the raw body to upstream as-is, so exclude it from JSON parsing.
 const jsonParser = express.json({ limit: '4mb' })
 app.use((req, res, next) => {
   if (req.path.startsWith('/proxy')) return next()
   jsonParser(req, res, next)
 })
 
-// 요청 원본 바디를 Buffer 로 수집 (비-GET 프록시 전달용)
+// Collect the raw request body into a Buffer (for forwarding non-GET proxy requests)
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = []
@@ -93,7 +93,7 @@ function readRawBody(req) {
   })
 }
 
-// /api 는 CORS 허용 — 브라우저 확장이 임의 사이트에서 fixpoint 를 POST 할 수 있도록.
+// /api allows CORS — so the browser extension can POST fixpoints from arbitrary sites.
 app.use('/api', (req, res, next) => {
   res.set('access-control-allow-origin', '*')
   res.set('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS')
@@ -102,7 +102,7 @@ app.use('/api', (req, res, next) => {
   next()
 })
 
-// ───────────────────────────────────────────────────────── 주입 스크립트
+// ───────────────────────────────────────────────────────── injected scripts
 const PUBLIC_DIR = path.join(__dirname, 'public')
 const SHIM_PATH = path.join(PUBLIC_DIR, 'shim.js')
 const INSPECTOR_PATH = path.join(PUBLIC_DIR, 'inspector.js')
@@ -131,10 +131,10 @@ app.get('/__vp/inspector.js', (_req, res) => {
   res.type('application/javascript').send(getInspector())
 })
 
-// 스냅샷 리소스 정적 서빙
+// Static serving of snapshot resources
 app.use('/snap', express.static(SNAP_ROOT, { fallthrough: true, maxAge: '1h' }))
 
-// ───────────────────────────────────────────────── 스크립트 주입 콜백
+// ───────────────────────────────────────────────── script injection callback
 function injectScripts($, baseUrl) {
   let head = $('head')
   if (!head.length) {
@@ -155,7 +155,7 @@ function injectScripts($, baseUrl) {
     }
   }
   const baseJson = JSON.stringify(baseUrl)
-  // 빈 data: 아이콘으로 기본 /favicon.ico (우리 오리진 404) 요청을 막는다.
+  // Use an empty data: icon to block the default /favicon.ico (404 on our origin) request.
   const faviconGuard = $('link[rel*="icon"]').length ? '' : `<link rel="icon" href="data:,">`
   head.prepend(
     `<script>window.__VP_BASE__=${baseJson};</script>` +
@@ -166,7 +166,7 @@ function injectScripts($, baseUrl) {
   body.append(`<script>${getInspector()}</script>`)
 }
 
-// ───────────────────────────────────────────────── 설정 API
+// ───────────────────────────────────────────────── config API
 app.get('/api/config', async (_req, res) => {
   res.json({
     targets: CONFIG.targets || [],
@@ -175,7 +175,7 @@ app.get('/api/config', async (_req, res) => {
   })
 })
 
-// ───────────────────────────────────────────────── 스크린샷 (요구2: 다운로드)
+// ───────────────────────────────────────────────── screenshot (requirement 2: download)
 app.get('/api/screenshot', async (req, res) => {
   const url = String(req.query.url || '')
   if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: 'bad url' })
@@ -188,7 +188,7 @@ app.get('/api/screenshot', async (req, res) => {
   }
 })
 
-// ───────────────────────────────────────────────── 프록시 엔드포인트 (모든 메서드)
+// ───────────────────────────────────────────────── proxy endpoint (all methods)
 app.all('/proxy', async (req, res) => {
   const target = req.query.url
   if (!target || !/^https?:\/\//i.test(String(target))) {
@@ -199,8 +199,8 @@ app.all('/proxy', async (req, res) => {
   const render = req.query.render === '1'
   const isGet = req.method === 'GET' || req.method === 'HEAD'
 
-  // 스냅샷/렌더는 문서(GET) 로드에만 적용. API 호출(POST 등)은 항상 실시간 전달.
-  // 로컬 스냅샷 우선
+  // Snapshot/render apply only to document (GET) loads. API calls (POST, etc.) are always forwarded live.
+  // Prefer local snapshot
   if (isGet && !fresh && hasSnapshot(baseUrl)) {
     try {
       const html = readSnapshotHtml(baseUrl)
@@ -208,11 +208,11 @@ app.all('/proxy', async (req, res) => {
       res.set('access-control-allow-origin', '*')
       return res.type('text/html; charset=utf-8').send(serveLocalHtml(html, baseUrl, injectScripts))
     } catch {
-      /* 폴백: 실시간 */
+      /* fallback: live */
     }
   }
 
-  // 렌더 모드: 헤드리스 브라우저로 완성 DOM 을 떠 와서 재작성 (SPA/하드 사이트)
+  // Render mode: fetch the fully-rendered DOM via a headless browser and rewrite it (SPA/hard sites)
   if (isGet && render) {
     try {
       const { html, finalUrl } = await renderHtml(baseUrl)
@@ -225,13 +225,13 @@ app.all('/proxy', async (req, res) => {
         .type('text/html; charset=utf-8')
         .send(
           `<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;padding:2rem">` +
-            `<h2>렌더 실패</h2><p>${escapeHtml(baseUrl)}</p><pre>${escapeHtml(String(err && err.message))}</pre></body>`,
+            `<h2>Render failed</h2><p>${escapeHtml(baseUrl)}</p><pre>${escapeHtml(String(err && err.message))}</pre></body>`,
         )
     }
   }
 
-  // 업스트림으로 전달할 헤더 — 호스트/홉바이홉 헤더는 제외, 나머지는 그대로 전달
-  // (content-type/authorization/cookie/accept 등이 보존되어 로그인·API 호출이 동작)
+  // Headers to forward upstream — drop host/hop-by-hop headers, forward the rest as-is
+  // (preserving content-type/authorization/cookie/accept etc. keeps login and API calls working)
   const fwdHeaders = {}
   const DROP = new Set([
     'host', 'connection', 'content-length', 'accept-encoding',
@@ -255,7 +255,7 @@ app.all('/proxy', async (req, res) => {
     }
   }
 
-  // 리다이렉트를 직접 처리 + 업스트림 타임아웃(무한 대기 방지)
+  // Handle redirects ourselves + upstream timeout (prevent infinite waits)
   const FETCH_TIMEOUT = parseInt(process.env.PROXY_FETCH_TIMEOUT || '15000', 10)
   const doFetch = (u) => {
     const ac = new AbortController()
@@ -266,7 +266,7 @@ app.all('/proxy', async (req, res) => {
 
   const isAbort = (e) => e && (e.name === 'AbortError' || /abort/i.test(String(e.message)))
   const errCode = (e) => String((e && e.cause && e.cause.code) || (e && e.message) || '')
-  // 폴백 후보 — 에러 종류에 맞춰서만 시도(불통 호스트에 헛된 재시도 방지)
+  // Fallback candidates — try only based on the error type (avoid pointless retries on unreachable hosts)
   function altCandidates(u, err) {
     const cands = []
     try {
@@ -275,11 +275,11 @@ app.all('/proxy', async (req, res) => {
       const labels = uo.hostname.split('.').length
       const isDns = /ENOTFOUND|EAI_AGAIN/.test(code)
       const isCert = /CERT|TLS|SSL|ALTNAME/i.test(code)
-      // www. 폴백: apex DNS 미해석/인증서 불일치일 때만
+      // www. fallback: only on apex DNS resolution failure / certificate mismatch
       if ((isDns || isCert) && !/^www\./i.test(uo.hostname) && labels >= 2 && labels <= 3) {
         const w = new URL(u); w.hostname = 'www.' + uo.hostname; cands.push(w.href)
       }
-      // http:// 폴백: 인증서/프로토콜 오류일 때만 (타임아웃·연결거부엔 무의미)
+      // http:// fallback: only on certificate/protocol errors (meaningless for timeouts/connection refused)
       if (isCert && uo.protocol === 'https:') {
         const h = new URL(u); h.protocol = 'http:'; cands.push(h.href)
       }
@@ -294,7 +294,7 @@ app.all('/proxy', async (req, res) => {
     upstream = await doFetch(baseUrl)
   } catch (err) {
     lastErr = err
-    // 타임아웃이면 즉시 포기(재시도해도 느림) → 504
+    // On timeout, give up immediately (retrying would still be slow) → 504
     const cands = (isGet && !isAbort(err)) ? altCandidates(baseUrl, err) : []
     for (const alt of cands) {
       try {
@@ -310,8 +310,8 @@ app.all('/proxy', async (req, res) => {
         .type('text/html; charset=utf-8')
         .send(
           `<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;padding:2rem">` +
-            `<h2>페이지를 불러오지 못했습니다</h2><p>${escapeHtml(baseUrl)}</p>` +
-            `<pre>${escapeHtml(aborted ? `시간 초과 (${FETCH_TIMEOUT}ms)` : String(lastErr && lastErr.message))}</pre></body>`,
+            `<h2>Failed to load page</h2><p>${escapeHtml(baseUrl)}</p>` +
+            `<pre>${escapeHtml(aborted ? `Timed out (${FETCH_TIMEOUT}ms)` : String(lastErr && lastErr.message))}</pre></body>`,
         )
     }
   }
@@ -320,32 +320,32 @@ app.all('/proxy', async (req, res) => {
   const ct = upstream.headers.get('content-type') || ''
   res.set('access-control-allow-origin', '*')
   res.set('x-vp-source', 'live')
-  // 업스트림 상태코드 보존 (로그인 실패 401, 비콘 204 등). 쿠키는 재작성해 전달.
+  // Preserve the upstream status code (login failure 401, beacon 204, etc.). Cookies are rewritten before forwarding.
   res.status(upstream.status)
   try {
     const sc = upstream.headers.getSetCookie && upstream.headers.getSetCookie()
     if (sc && sc.length) res.set('set-cookie', sc.map(rewriteSetCookie))
   } catch {}
 
-  // 리다이렉트(3xx): Location 을 프록시 경유로 바꿔 브라우저가 직접 따라가게 한다.
-  // → 각 홉의 쿠키가 정상 저장되고 로그인 후 이동이 동작.
+  // Redirects (3xx): rewrite Location to go through the proxy so the browser follows it directly.
+  // → cookies for each hop are stored correctly and post-login navigation works.
   if (upstream.status >= 300 && upstream.status < 400 && upstream.headers.get('location')) {
     res.set('location', rwAbs(upstream.headers.get('location'), finalUrl))
     return res.end()
   }
 
-  // 콘텐츠 종류 판별. 브라우저가 알려주는 요청 목적지(Sec-Fetch-Dest)를 최우선으로 쓴다.
-  // 이게 가장 신뢰할 수 있다: Vite 처럼 .css 를 JS 모듈로 서빙해도 dest=script 면 JS 로 줘야 한다.
-  // dest 가 없을 때(curl 등)만 content-type/확장자로 폴백.
+  // Determine content type. Prefer the browser-supplied request destination (Sec-Fetch-Dest) above all.
+  // This is the most reliable: even if .css is served as a JS module (like Vite), dest=script means we serve JS.
+  // Fall back to content-type/extension only when dest is absent (curl, etc.).
   const dest = (req.get('sec-fetch-dest') || '').toLowerCase()
   let upath = ''
   try { upath = new URL(finalUrl).pathname } catch {}
 
-  // 응답이 HTML 이면(404/SPA 폴백/에러 페이지) script/style 요청이라도 JS/CSS 로 강제하지 않는다.
-  // (HTML 을 JS 로 실행하면 "Unexpected token '<'" 가 난다 → 원본 그대로 통과시켜 정직하게 실패)
+  // If the response is HTML (404/SPA fallback/error page), don't force it to JS/CSS even for script/style requests.
+  // (Running HTML as JS throws "Unexpected token '<'" → pass the original through so it fails honestly)
   const ctIsHtml = /text\/html|application\/xhtml/i.test(ct)
 
-  let kind = null // 'js' | 'css' | 'html' | null(=원본 버퍼)
+  let kind = null // 'js' | 'css' | 'html' | null (= raw buffer)
   if (dest === 'script' || dest === 'serviceworker' || dest === 'worker') {
     kind = ctIsHtml ? null : 'js'
   } else if (dest === 'style') {
@@ -353,14 +353,14 @@ app.all('/proxy', async (req, res) => {
   } else if (dest === 'document' || dest === 'iframe' || dest === 'frame') {
     kind = 'html'
   } else if (!dest) {
-    // 비-브라우저/목적지 없음 → content-type 우선, 확장자 폴백
+    // non-browser / no destination → prefer content-type, fall back to extension
     if (isJsContentType(ct)) kind = 'js'
     else if (/text\/css|\/css/i.test(ct)) kind = 'css'
     else if (/text\/html|application\/xhtml/i.test(ct)) kind = 'html'
     else if (/\.(mjs|js)(\?|$)/i.test(upath)) kind = 'js'
     else if (/\.css(\?|$)/i.test(upath)) kind = 'css'
   }
-  // 그 외(image/font/fetch=empty/json/audio/video 등)는 kind=null → 원본 그대로 통과
+  // Everything else (image/font/fetch=empty/json/audio/video etc.) stays kind=null → pass the original through
 
   try {
     if (kind === 'css') {
@@ -375,9 +375,9 @@ app.all('/proxy', async (req, res) => {
       const html = await upstream.text()
       return res.type('text/html; charset=utf-8').send(rewriteHtmlLive(html, finalUrl, injectScripts))
     }
-    // 원본 버퍼 그대로 통과(이미지/폰트/오디오/비디오/JSON 등).
-    // 미디어 스트리밍에 필수인 Range 관련 헤더와 캐시 헤더를 업스트림에서 전달한다.
-    // (Content-Range 없는 206 은 브라우저가 무효 처리 → 오디오/비디오 재생 실패)
+    // Pass the raw buffer through (images/fonts/audio/video/JSON etc.).
+    // Forward Range-related and cache headers from upstream, which are essential for media streaming.
+    // (A 206 without Content-Range is treated as invalid by browsers → audio/video playback fails)
     const PASS_HEADERS = [
       'content-range', 'accept-ranges', 'content-disposition',
       'cache-control', 'etag', 'last-modified', 'expires', 'vary', 'content-language',
@@ -394,7 +394,7 @@ app.all('/proxy', async (req, res) => {
   }
 })
 
-// ───────────────────────────────────────────────── 스냅샷 API
+// ───────────────────────────────────────────────── snapshot API
 app.get('/api/snapshot', (req, res) => {
   const url = String(req.query.url || '')
   if (!url) return res.status(400).json({ error: 'no url' })
@@ -416,7 +416,7 @@ app.delete('/api/snapshot', (req, res) => {
   res.json({ ok, ...snapshotStatus(url) })
 })
 
-// ───────────────────────────────────────────────── 로그인 세션 API
+// ───────────────────────────────────────────────── login session API
 const SESSION_ERROR_STATUS = { NO_RENDERER: 501, NO_DISPLAY: 501, NO_LOGIN: 410 }
 app.get('/api/session', (req, res) => {
   const url = String(req.query.url || '')
@@ -472,7 +472,7 @@ app.delete('/api/fixpoints/:id', (req, res) => {
   res.json(deleteFixpoint(String(req.params.id)))
 })
 
-// ───────────────────────────────────────────────── AI edit (미리보기)
+// ───────────────────────────────────────────────── AI edit (preview)
 const EDIT_ERROR_STATUS = { NO_API_KEY: 401, NO_SNAPSHOT: 409, NO_ELEMENT: 404, TOO_LARGE: 413, EMPTY: 502 }
 app.post('/api/edit', async (req, res) => {
   const { url, selector, prompt } = req.body || {}
@@ -485,7 +485,7 @@ app.post('/api/edit', async (req, res) => {
   }
 })
 
-// ───────────────────────────────────────────────── 프로덕션 정적 서빙
+// ───────────────────────────────────────────────── production static serving
 if (isProd) {
   const DIST = path.join(ROOT, 'dist')
   app.use(express.static(DIST))
@@ -495,9 +495,9 @@ if (isProd) {
   })
 }
 
-// Set-Cookie 재작성 — 프록시(localhost) 에서도 세션 쿠키가 저장/전송되도록.
-// Domain 제거(프록시 호스트로 기본화), Path 를 / 로(모든 /proxy 요청에 전송),
-// http 프록시에선 Secure 제거, SameSite=None→Lax(Secure 없이 동작).
+// Set-Cookie rewrite — so session cookies are stored/sent even through the proxy (localhost).
+// Remove Domain (default to the proxy host), set Path to / (sent on all /proxy requests),
+// remove Secure on the http proxy, and SameSite=None→Lax (works without Secure).
 function rewriteSetCookie(line) {
   let out = String(line)
   out = out.replace(/;\s*Domain=[^;]*/gi, '')

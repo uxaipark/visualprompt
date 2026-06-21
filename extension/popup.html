@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <style>
@@ -16,17 +16,17 @@
   </head>
   <body>
     <h1>📌 VisualPrompt Collector</h1>
-    <label for="server">VP 서버 주소</label>
+    <label for="server">VP server URL</label>
     <input id="server" placeholder="http://localhost:3001" />
     <div class="row">
       <input type="checkbox" id="enabled" />
-      <label for="enabled" style="margin:0">이 탭에서 수집 모드 켜기</label>
+      <label for="enabled" style="margin:0">Enable collect mode on this tab</label>
     </div>
-    <button id="save">저장 / 적용</button>
+    <button id="save">Save / Apply</button>
     <div class="ok" id="status"></div>
     <div class="hint">
-      수집 모드를 켜고 페이지 요소를 클릭하면 말풍선이 떠요. 프롬프트를 적고 저장하면
-      서버 <code>fixpoints/pending</code> 에 적재됩니다. 로그인/SPA/봇차단 사이트도 그대로 동작합니다.
+      Turn on collect mode and click a page element to bring up a bubble. Write a prompt and save,
+      and it lands in the server's <code>fixpoints/pending</code>. Works on logged-in/SPA/bot-blocked sites too.
     </div>
     <script src="popup.js"></script>
   </body>

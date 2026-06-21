@@ -49,16 +49,16 @@ export default function Toolbar({
           className="url-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="https://example.com 또는 도메인 입력"
+          placeholder="https://example.com or enter a domain"
           spellCheck={false}
         />
-        <button type="submit" className="btn">불러오기</button>
-        <button type="button" className="btn ghost" title="다시 불러오기" onClick={onReload}>↻</button>
+        <button type="submit" className="btn">Load</button>
+        <button type="button" className="btn ghost" title="Reload" onClick={onReload}>↻</button>
       </form>
 
       {targets && targets.length > 0 && (
-        <select className="target-select" defaultValue="" onChange={pickTarget} title="설정된 타깃">
-          <option value="" disabled>타깃…</option>
+        <select className="target-select" defaultValue="" onChange={pickTarget} title="Configured targets">
+          <option value="" disabled>Target…</option>
           {targets.map((t) => (
             <option key={t.id} value={t.id}>{t.label || t.id} ({t.mode})</option>
           ))}
@@ -67,7 +67,7 @@ export default function Toolbar({
 
       <label
         className={'switch sm' + (renderMode ? ' on' : '') + (rendererAvailable ? '' : ' disabled')}
-        title={rendererAvailable ? '헤드리스 브라우저로 렌더(SPA/로그인/봇차단 대응)' : 'Playwright 미설치'}
+        title={rendererAvailable ? 'Render with a headless browser (handles SPA / login / bot blocking)' : 'Playwright not installed'}
       >
         <input
           type="checkbox"
@@ -76,33 +76,33 @@ export default function Toolbar({
           onChange={(e) => onToggleRender(e.target.checked)}
         />
         <span className="knob" />
-        <span className="switch-label">🎭 렌더</span>
+        <span className="switch-label">🎭 Render</span>
       </label>
 
       <div className="tb-spacer" />
 
       <div className="snap-controls">
         {loginToken ? (
-          <button className="btn" onClick={onLoginSave} title="로그인 완료 후 누르세요">✅ 세션 저장</button>
+          <button className="btn" onClick={onLoginSave} title="Click after logging in">✅ Save session</button>
         ) : session && session.exists ? (
           <>
-            <span className="snap-badge" title={'세션 저장됨: ' + (session.savedAt || '')}>🔓 {session.host}</span>
-            <button className="btn ghost" disabled={!url} onClick={onSessionClear}>세션삭제</button>
+            <span className="snap-badge" title={'Session saved: ' + (session.savedAt || '')}>🔓 {session.host}</span>
+            <button className="btn ghost" disabled={!url} onClick={onSessionClear}>Clear session</button>
           </>
         ) : (
-          <button className="btn ghost" disabled={!url} onClick={onLoginStart} title="브라우저 창에서 직접 로그인 → 세션 저장">🔐 로그인</button>
+          <button className="btn ghost" disabled={!url} onClick={onLoginStart} title="Log in directly in the browser window → save session">🔐 Login</button>
         )}
       </div>
 
       <div className="snap-controls">
         {snapshot && snapshot.exists ? (
           <>
-            <span className="snap-badge" title={snapshot.htmlPath || ''}>💾 스냅샷 ({snapshot.resourceCount ?? 0})</span>
-            <button className="btn ghost" disabled={busy} onClick={onSnapshotDelete}>삭제</button>
+            <span className="snap-badge" title={snapshot.htmlPath || ''}>💾 Snapshot ({snapshot.resourceCount ?? 0})</span>
+            <button className="btn ghost" disabled={busy} onClick={onSnapshotDelete}>Delete</button>
           </>
         ) : (
           <button className="btn ghost" disabled={busy || !url} onClick={onSnapshotSave}>
-            {busy ? '저장 중…' : '로컬 저장'}
+            {busy ? 'Saving…' : 'Save local'}
           </button>
         )}
       </div>
@@ -111,17 +111,17 @@ export default function Toolbar({
         className={'btn ghost' + (pinsVisible ? '' : ' active')}
         disabled={!url}
         onClick={() => onTogglePins(!pinsVisible)}
-        title={pinsVisible ? '핀 숨기기 (주변부 가릴 때)' : '핀 보이기'}
+        title={pinsVisible ? 'Hide pins (when they obscure surroundings)' : 'Show pins'}
       >
-        {pinsVisible ? '📌 핀 숨기기' : '📌 핀 보이기'}
+        {pinsVisible ? '📌 Hide pins' : '📌 Show pins'}
       </button>
 
-      <button className="btn ghost" disabled={!url} onClick={onScreenshot} title="현재 페이지 풀페이지 스크린샷 다운로드">📸 스크린샷</button>
+      <button className="btn ghost" disabled={!url} onClick={onScreenshot} title="Download a full-page screenshot of the current page">📸 Screenshot</button>
 
-      <label className={'switch' + (promptMode ? ' on' : '')} title="UI 프롬프트 모드">
+      <label className={'switch' + (promptMode ? ' on' : '')} title="UI prompt mode">
         <input type="checkbox" checked={promptMode} onChange={(e) => onToggleMode(e.target.checked)} />
         <span className="knob" />
-        <span className="switch-label">UI 프롬프트</span>
+        <span className="switch-label">UI Prompt</span>
       </label>
     </header>
   )

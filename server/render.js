@@ -1,6 +1,6 @@
-// server/render.js — 헤드리스 Chromium 렌더 엔진.
-// SPA/Figma/봇차단/로그인 사이트를 "진짜 브라우저"로 렌더해 완성된 DOM 을 떠 오고,
-// 풀페이지 스크린샷을 찍는다. Playwright 가 없으면 graceful 하게 실패한다.
+// server/render.js — headless Chromium render engine.
+// Renders SPA/Figma/bot-blocked/login sites in a "real browser" to grab the fully-built DOM
+// and takes full-page screenshots. Fails gracefully when Playwright is unavailable.
 import { storageStateFor } from './session.js'
 
 let _pw = null
@@ -23,7 +23,7 @@ export async function renderAvailable() {
 
 async function getBrowser() {
   if (!(await renderAvailable())) {
-    const e = new Error('Playwright 가 설치되지 않았습니다. `npm i playwright && npx playwright install chromium`')
+    const e = new Error('Playwright is not installed. `npm i playwright && npx playwright install chromium`')
     e.code = 'NO_RENDERER'
     throw e
   }
@@ -50,24 +50,24 @@ async function withPage(fn, opts = {}) {
 }
 
 async function gotoSettled(page, url, timeout) {
-  // networkidle 우선, 실패 시 load 폴백 — 무한 polling SPA 대비
+  // Prefer networkidle, fall back to load on failure — guards against infinitely polling SPAs
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: timeout || 30000 })
   } catch {
     await page.goto(url, { waitUntil: 'load', timeout: timeout || 30000 }).catch(() => {})
   }
-  // 하이드레이션 여유
+  // Allow time for hydration
   await page.waitForTimeout(600)
 }
 
-// 저장된 로그인 세션이 있으면 자동 주입 (opts.noSession 으로 끌 수 있음)
+// Auto-inject a saved login session if one exists (can be disabled via opts.noSession)
 function withSession(url, opts) {
   if (opts.noSession || opts.storageState) return opts
   const state = storageStateFor(url)
   return state ? { ...opts, storageState: state } : opts
 }
 
-// 렌더된 HTML(완성 DOM) + 최종 URL 반환
+// Returns the rendered HTML (fully-built DOM) + final URL
 export async function renderHtml(url, opts = {}) {
   return withPage(async (page) => {
     await gotoSettled(page, url, opts.timeout)
@@ -77,7 +77,7 @@ export async function renderHtml(url, opts = {}) {
   }, withSession(url, opts))
 }
 
-// 풀페이지 PNG 스크린샷 버퍼
+// Full-page PNG screenshot buffer
 export async function screenshot(url, opts = {}) {
   return withPage(async (page) => {
     await gotoSettled(page, url, opts.timeout)

@@ -1,7 +1,7 @@
 {
   "name": "visualprompt",
   "version": "0.1.0",
-  "description": "VisualPrompt — 웹 UI 위에 수정 프롬프트를 핀으로 꽂아 fixpoint(수정 포인트)를 수집하고, 서버의 inbox 디렉토리에 떨어뜨려 에이전트가 실제 소스를 고치게 하는 도구",
+  "description": "VisualPrompt — pin edit prompts onto a web UI to collect fixpoints, drop them into the server's inbox directory, and let an agent edit the actual source",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VisualPrompt Collector",
   "version": "0.1.0",
-  "description": "현재 탭의 UI 요소에 수정 프롬프트를 핀으로 꽂아 VisualPrompt 서버 inbox 로 전송한다. 로그인/SPA/봇차단 사이트도 그대로 수집.",
+  "description": "Pin edit prompts onto UI elements in the current tab and send them to the VisualPrompt server inbox. Collects on logged-in/SPA/bot-blocked sites too.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
   "action": { "default_popup": "popup.html", "default_title": "VisualPrompt Collector" },
