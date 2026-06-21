@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VisualPrompt — Fix web UI by pinning it</title>
+<meta name="description" content="Pin edit prompts onto any web UI, collect them as fixpoints, and let an agent edit the real source. Proxy · headless render · browser extension." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0a0c12; --bg2:#0e111b; --ink:#e8ecf5; --muted:#8d97ad; --line:#1e2433;
+  --accent:#5b8cff; --accent2:#7c5cff; --warm:#ff8a5b; --ok:#39d98a; --card:rgba(255,255,255,.03);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:hidden}
+code{font-family:"JetBrains Mono",monospace;color:#aeb9ff;font-size:.88em}
+a{color:inherit;text-decoration:none}
+.grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.grad-warm{background:linear-gradient(90deg,var(--warm),#ff5b8a);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* background */
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(91,140,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(91,140,255,.045) 1px,transparent 1px);
+  background-size:48px 48px;mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 90%)}
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(50% 40% at 15% 8%,rgba(124,92,255,.18),transparent 70%),radial-gradient(55% 45% at 88% 22%,rgba(91,140,255,.16),transparent 70%)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:18px;padding:14px 28px;
+  background:rgba(10,12,18,.72);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{font-weight:900;letter-spacing:.3px;display:flex;align-items:center;gap:9px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+nav .links{margin-left:auto;display:flex;gap:6px;align-items:center}
+nav .links a{padding:8px 12px;border-radius:9px;font-size:14px;color:var(--muted)}
+nav .links a:hover{color:var(--ink);background:rgba(255,255,255,.04)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;font-weight:600;font-size:14px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer}
+.btn.pri{background:linear-gradient(90deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 8px 24px rgba(91,140,255,.25)}
+.btn:hover{transform:translateY(-1px)}
+
+/* layout */
+.wrap{position:relative;z-index:5;max-width:1080px;margin:0 auto;padding:0 24px}
+section{position:relative;z-index:5;padding:84px 0}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--accent);text-transform:uppercase;margin-bottom:14px}
+h1{font-size:clamp(38px,6vw,68px);line-height:1.04;font-weight:900;letter-spacing:-.02em}
+h2{font-size:clamp(26px,3.6vw,40px);line-height:1.12;font-weight:800;letter-spacing:-.01em;margin-bottom:14px}
+.lead{font-size:clamp(16px,2vw,20px);color:#c3cbdc;max-width:640px}
+.muted{color:var(--muted)}
+
+/* hero */
+.hero{padding-top:64px}
+.hero h1{margin:8px 0 18px}
+.pin{display:inline-block;transform:translateY(4px)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-size:13px;color:#cdd5e6;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 13px}
+.chip.ok{color:var(--ok);border-color:rgba(57,217,138,.3);background:rgba(57,217,138,.08)}
+.cta{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+.shot{margin-top:48px;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);background:var(--bg2)}
+.shot img{display:block;width:100%}
+.shot figcaption{padding:11px 16px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);background:rgba(255,255,255,.02)}
+
+/* problem bubbles */
+.bubbles{display:flex;flex-direction:column;gap:12px;max-width:680px;margin-top:8px}
+.bubble{border:1px solid var(--line);border-radius:14px;border-top-left-radius:4px;padding:13px 16px;background:rgba(255,91,138,.06);color:#ffd9e2;font-size:15px;width:fit-content;max-width:100%}
+.punch{margin-top:22px;font-size:clamp(18px,2.4vw,24px);font-weight:700}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin-top:10px}
+.step{flex:1;min-width:150px;border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--card);text-align:center}
+.step .n{width:26px;height:26px;border-radius:8px;background:rgba(91,140,255,.15);color:var(--accent);font-weight:800;font-size:13px;display:grid;place-items:center;margin:0 auto 10px}
+.step.hl{border-color:rgba(124,92,255,.5);background:linear-gradient(180deg,rgba(124,92,255,.12),transparent)}
+.step .e{font-size:26px}.step .t{margin-top:8px;font-weight:600;font-size:15px}
+.arrow{align-self:center;color:var(--muted);font-size:20px}
+
+/* grid cards */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+.cardx{border:1px solid var(--line);border-radius:16px;padding:22px;background:var(--card)}
+.cardx h3{font-size:18px;margin-bottom:8px;display:flex;align-items:center;gap:9px}
+.cardx p{color:var(--muted);font-size:14px}
+.cardx .tag{display:inline-block;margin-top:12px;font-size:12px;color:var(--accent);background:rgba(91,140,255,.1);border-radius:7px;padding:3px 9px}
+.cardx.star{border-color:rgba(124,92,255,.45);box-shadow:0 0 0 1px rgba(124,92,255,.15) inset}
+
+/* layers / code list */
+.layers{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.layer{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line);border-radius:13px;padding:15px 18px;background:var(--card)}
+.layer .b{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent);border:1px solid rgba(91,140,255,.3);border-radius:7px;padding:3px 7px;margin-top:2px}
+.layer .lt{font-weight:700;margin-bottom:3px}.layer .lp{color:var(--muted);font-size:14px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+.stat{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--card)}
+.stat .big{font-size:30px;font-weight:900;letter-spacing:-.02em}
+.stat .cap{color:var(--muted);font-size:13px;margin-top:6px}
+.fixes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.fix{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#cbd3e4}
+.fix .c{color:var(--ok);font-weight:800}
+
+/* two col */
+.two{display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:center}
+.codeblock{border:1px solid var(--line);border-radius:14px;background:#0b0e16;padding:16px 18px;font-family:"JetBrains Mono",monospace;font-size:13px;color:#bcc6e6;overflow:auto;line-height:1.7}
+.codeblock .k{color:#7c9cff}.codeblock .c{color:#5b667e}
+
+/* footer */
+footer{position:relative;z-index:5;border-top:1px solid var(--line);padding:64px 0 48px;text-align:center}
+.repo{display:inline-flex;align-items:center;gap:9px;font-family:"JetBrains Mono",monospace;font-size:15px;border:1px solid var(--line);border-radius:11px;padding:11px 18px;background:var(--card);margin:18px 0}
+.foot-mini{color:var(--muted);font-size:13px;margin-top:18px}
+
+/* reveal (progressive enhancement — visible by default, animated only when JS runs) */
+html.js [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+html.js [data-reveal].in{opacity:1;transform:none}
+
+@media(max-width:820px){
+  .cards,.stats{grid-template-columns:1fr 1fr}
+  .two{grid-template-columns:1fr}
+  .fixes{grid-template-columns:1fr}
+  nav .links a:not(.btn){display:none}
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.className='js'</script>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<nav>
+  <div class="brand"><span class="dot"></span> VisualPrompt</div>
+  <div class="links">
+    <a href="#how">How it works</a>
+    <a href="#paths">Collection paths</a>
+    <a href="#hardening">Hardening</a>
+    <a href="https://github.com/uxaipark/visualprompt/tree/main/docs">Docs</a>
+    <a class="btn pri" href="https://github.com/uxaipark/visualprompt">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="kicker" data-reveal>PIN · PROMPT · PATCH</div>
+    <h1 data-reveal><span class="pin">📍</span> Fix web UI<br>by <span class="grad">pinning it</span>.</h1>
+    <p class="lead" data-reveal>Drop a pin on any element, write one line, and a code agent edits exactly that spot in the real source.
+      No more "the second card on the top-left… no, the grey button next to it."</p>
+    <div class="chips" data-reveal>
+      <span class="chip">Any site</span>
+      <span class="chip">SPA · Next.js · Figma exports</span>
+      <span class="chip">Login &amp; bot-blocked</span>
+      <span class="chip">Vanilla / React / Vue</span>
+    </div>
+    <div class="cta" data-reveal>
+      <a class="btn pri" href="https://github.com/uxaipark/visualprompt">★ View on GitHub</a>
+      <a class="btn" href="#how">See how it works ↓</a>
+    </div>
+    <figure class="shot" data-reveal>
+      <img src="images/shot-1-pins.png" alt="Multiple edit-prompt pins placed across a dashboard UI" />
+      <figcaption>Five edit-prompt pins on a live dashboard — each captures the element + your prompt, queued in the server inbox.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section>
+  <div class="wrap">
+    <div class="kicker" data-reveal>The problem</div>
+    <h2 data-reveal>Telling AI <span class="grad-warm">which element</span> to fix is the hard part</h2>
+    <div class="bubbles">
+      <div class="bubble" data-reveal>"Not the second card top-left… the grey button next to it."</div>
+      <div class="bubble" data-reveal>"No, above that — actually the text inside it."</div>
+      <div class="bubble" data-reveal>"Make the color darker… wait, not that one…"</div>
+    </div>
+    <p class="punch" data-reveal>The moment you <b>describe an element in words</b>, the conversation falls apart.</p>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="how">
+  <div class="wrap">
+    <div class="kicker" data-reveal>The fix</div>
+    <h2 data-reveal>One click becomes <span class="grad">perfect context</span></h2>
+    <div class="flow">
+      <div class="step" data-reveal><div class="n">1</div><div class="e">🖱️</div><div class="t">Click an element</div></div>
+      <div class="arrow" data-reveal>→</div>
+      <div class="step" data-reveal><div class="n">2</div><div class="e">📍</div><div class="t">Pin + popover</div></div>
+      <div class="arrow" data-reveal>→</div>
+      <div class="step" data-reveal><div class="n">3</div><div class="e">✍️</div><div class="t">Write a prompt</div></div>
+      <div class="arrow" data-reveal>→</div>
+      <div class="step hl" data-reveal><div class="n">4</div><div class="e">🤖</div><div class="t">Agent edits source</div></div>
+    </div>
+    <p class="punch" data-reveal style="font-size:17px;color:var(--muted);font-weight:500">
+      Every pin auto-captures <code>selector · xpath · rect · text · framework · data-testid · component · API calls</code>.</p>
+    <figure class="shot" data-reveal style="margin-top:30px">
+      <img src="images/shot-2-prompt.png" alt="Writing an edit prompt in the popover with selector and xpath shown" />
+      <figcaption>The popover shows the element's <code>selector</code> / <code>xpath</code>; you just type the change you want.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- COLLECTION PATHS -->
+<section id="paths">
+  <div class="wrap">
+    <div class="kicker" data-reveal>Three collection paths</div>
+    <h2 data-reveal>One inspector, three ways to <span class="grad">get on the page</span></h2>
+    <p class="lead muted" data-reveal style="margin-bottom:26px">Whatever the site throws at you — a proxy for the easy cases, a headless browser for the hard ones, and a browser extension for everything else.</p>
+    <div class="cards">
+      <div class="cardx" data-reveal>
+        <h3>🪟 Proxy</h3>
+        <p>Server fetches → rewrites every URL → injects the inspector → re-serves same-origin. Instant and interactive.</p>
+        <span class="tag">built &amp; static sites · local dev</span>
+      </div>
+      <div class="cardx" data-reveal>
+        <h3>🎭 Render</h3>
+        <p>Headless Chromium (Playwright) renders the finished DOM, then crawls / screenshots it. Login sessions injectable.</p>
+        <span class="tag">SPA · bot-blocked · server-side</span>
+      </div>
+      <div class="cardx star" data-reveal>
+        <h3>🧩 Extension <span class="muted" style="font-size:12px">MV3</span></h3>
+        <p>Runs in your <b>real tab</b>, so the app hydrates natively. Handles what a proxy can't.</p>
+        <span class="tag">Next/Vite dev · logged-in · hard sites</span>
+      </div>
+    </div>
+    <figure class="shot" data-reveal style="margin-top:30px">
+      <img src="images/collection-modes.png" alt="Diagram of the three collection paths feeding the fixpoint inbox" />
+      <figcaption>All three paths land their pins in the same server inbox.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="wrap">
+    <div class="kicker" data-reveal>Under the hood</div>
+    <h2 data-reveal>How any site gets <span class="grad">wrapped &amp; instrumented</span></h2>
+    <div class="layers" data-reveal>
+      <div class="layer"><span class="b">01</span><div><div class="lt">React host shell</div><div class="lp"><code>client/</code> · iframe · toolbar · side panel · two-way <code>postMessage</code></div></div></div>
+      <div class="layer"><span class="b">02</span><div><div class="lt">Rewriting proxy</div><div class="lp"><code>server/proxy.js · index.js</code> · strip X-Frame/CSP · rewrite HTML/CSS/JS URLs · all HTTP methods · cookies · Range</div></div></div>
+      <div class="layer"><span class="b">03</span><div><div class="lt">Injected inspector</div><div class="lp"><code>shim.js · inspector.js</code> · hook fetch/XHR/setAttribute · pins · DOM locators · source clues</div></div></div>
+      <div class="layer"><span class="b">04</span><div><div class="lt">Fixpoint inbox</div><div class="lp"><code>inbox.js</code> → <code>fixpoints/pending/fp-NNN.{json,md}</code> · agent reads, edits source, moves to <code>applied/</code></div></div></div>
+    </div>
+    <figure class="shot" data-reveal style="margin-top:30px">
+      <img src="images/architecture.png" alt="System architecture diagram" />
+    </figure>
+  </div>
+</section>
+
+<!-- FIXPOINT INBOX -->
+<section>
+  <div class="wrap two">
+    <div data-reveal>
+      <div class="kicker">Agent handoff</div>
+      <h2>A pin becomes a <span class="grad">work order</span></h2>
+      <p class="lead muted">Each pin is written as one structured file. The agent finds the source by search terms (no fragile selectors), edits it, and moves the file to <code>applied/</code>.</p>
+      <div class="chips" style="margin-top:18px">
+        <span class="chip ok">selector + xpath + rect</span>
+        <span class="chip ok">data-testid · component</span>
+        <span class="chip ok">framework + API paths</span>
+        <span class="chip ok">candidate file globs</span>
+      </div>
+    </div>
+    <div class="codeblock" data-reveal><span class="c"># fixpoints/pending/fp-001.md</span>
+<span class="k">## Edit instruction</span>
+Make this the primary CTA, open a modal.
+
+<span class="k">## Target element</span>
+selector: <span style="color:#aef0c8">#new-report</span>
+xpath:    /html/body/div[2]/main/...
+
+<span class="k">## Source-code search clues</span>
+data-testid="new-report-btn"
+component:NewReportButton
+candidate: **/NewReportButton*.tsx
+</div>
+  </div>
+</section>
+
+<!-- HARDENING -->
+<section id="hardening">
+  <div class="wrap">
+    <div class="kicker" data-reveal>Battle-tested</div>
+    <h2 data-reveal>Hardened against <span class="grad-warm">1,000 real websites</span></h2>
+    <div class="stats">
+      <div class="stat" data-reveal><div class="big">1,000</div><div class="cap">representative sites auto-verified through the proxy</div></div>
+      <div class="stat" data-reveal><div class="big grad">63.8%</div><div class="cap">load + stay interactive directly through the proxy</div></div>
+      <div class="stat" data-reveal><div class="big">~78%</div><div class="cap">of failures are site-side blocks — the extension bypasses them</div></div>
+      <div class="stat" data-reveal><div class="big">+26</div><div class="cap">sites recovered by the www / http fallback chain</div></div>
+    </div>
+    <div class="fixes" data-reveal>
+      <div class="fix"><span class="c">✓</span> <span>Bare-specifier preservation — stops import-maps (three.js) from dying</span></div>
+      <div class="fix"><span class="c">✓</span> <span>Range / Content-Range passthrough — audio &amp; video playback + seeking</span></div>
+      <div class="fix"><span class="c">✓</span> <span>Sec-Fetch-Dest MIME — fixes <code>text/css</code> modules &amp; <code>Unexpected token '&lt;'</code></span></div>
+      <div class="fix"><span class="c">✓</span> <span>Set-Cookie rewrite + manual redirect — real login flows work</span></div>
+      <div class="fix"><span class="c">✓</span> <span>All HTTP methods + body forwarding — POST/PUT APIs, not just GET</span></div>
+      <div class="fix"><span class="c">✓</span> <span>Service-worker neutralization, favicon guard, fetch timeout (504)</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="kicker" style="text-align:center">Point → Prompt → Done</div>
+    <h2 style="font-size:clamp(30px,5vw,52px)"><span class="grad">VisualPrompt</span></h2>
+    <p class="lead muted" style="margin:10px auto 0">Stop describing. Just pin it.</p>
+    <div class="repo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.3-1.8-1.3-1.8-1.1-.7 0-.7 0-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2 0-.4-.5-1.6.1-3.3 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.1 2.9.1 3.3.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+      github.com/uxaipark/visualprompt
+    </div>
+    <div class="cta" style="justify-content:center">
+      <a class="btn pri" href="https://github.com/uxaipark/visualprompt">View repository ↗</a>
+      <a class="btn" href="https://github.com/uxaipark/visualprompt/tree/main/docs">Read the docs ↗</a>
+    </div>
+    <p class="foot-mini">Proxy · Headless render (Playwright) · Browser extension (MV3) · Fixpoint inbox · AI edit preview</p>
+  </div>
+</footer>
+
+<script>
+  // reveal-on-scroll
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('[data-reveal]').forEach((el, i) => {
+    el.style.transitionDelay = (Math.min(i % 6, 5) * 0.05) + 's';
+    io.observe(el);
+  });
+</script>
+</body>
+</html>

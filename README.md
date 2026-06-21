@@ -4,6 +4,8 @@ A tool that lets you **pin edit prompts onto a web UI** to collect "fixpoints",
 then **writes them as structured documents into the server's inbox directory** so a server-side agent (Claude Code, etc.)
 can edit the actual source code. SPA, login, and bot-blocked sites are handled via **headless browser rendering**.
 
+> 🌐 **Intro / landing page:** https://uxaipark.github.io/visualprompt/ &nbsp;·&nbsp; 📖 **Docs:** [`docs/`](./docs)
+
 ## Screenshots
 
 **1. Pin edit prompts across a complex UI** — toggle *UI Prompt* mode and drop a pin (📌) on any element. Each pin captures the element's `selector`/`xpath` + your prompt, lists it in the side panel, and queues it in the server inbox for the agent.
