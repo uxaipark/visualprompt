@@ -4,6 +4,16 @@ A tool that lets you **pin edit prompts onto a web UI** to collect "fixpoints",
 then **writes them as structured documents into the server's inbox directory** so a server-side agent (Claude Code, etc.)
 can edit the actual source code. SPA, login, and bot-blocked sites are handled via **headless browser rendering**.
 
+## Screenshots
+
+**1. Point at a UI element** — toggle *UI Prompt* mode, hover, and the element is highlighted with its selector.
+
+![Selecting a UI element](docs/images/shot-1-select.png)
+
+**2. Write an edit prompt** — click the element; a popover shows its `selector` / `xpath`, and you type the change you want.
+
+![Entering an edit prompt](docs/images/shot-2-prompt.png)
+
 ## Quick start
 ```bash
 bash install.sh      # dependencies + Chromium + .env
