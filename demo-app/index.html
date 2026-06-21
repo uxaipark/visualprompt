@@ -3,34 +3,215 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Demo Shop — local frontend in development</title>
+    <title>Acme Analytics — local frontend in development</title>
     <style>
-      body { font-family: system-ui, sans-serif; margin: 0; color: #1f2937; }
-      header { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #e5e7eb; }
-      header img { height: 32px; }
-      .brand { font-weight: 700; font-size: 18px; }
-      main { max-width: 720px; margin: 40px auto; padding: 0 24px; }
-      .product { display: flex; gap: 24px; align-items: center; }
-      .product img { width: 200px; border-radius: 12px; background: #f3f4f6; }
-      h1 { font-size: 24px; }
-      .price { font-size: 20px; color: #2563eb; font-weight: 700; }
-      .buy { margin-top: 16px; padding: 10px 20px; border: 0; border-radius: 8px; background: #111827; color: #fff; font-size: 15px; cursor: pointer; }
+      :root {
+        --bg: #f1f5f9; --card: #ffffff; --ink: #0f172a; --muted: #64748b;
+        --border: #e2e8f0; --brand: #4f46e5; --brand-2: #6366f1;
+        --green: #16a34a; --amber: #d97706; --red: #dc2626;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+      a { color: inherit; text-decoration: none; }
+
+      /* top bar */
+      .topbar { display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 20px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
+      .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
+      .logo .mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+      .search { flex: 0 1 360px; position: relative; }
+      .search input { width: 100%; height: 36px; padding: 0 12px 0 34px; border: 1px solid var(--border); border-radius: 9px; background: #f8fafc; font-size: 14px; }
+      .search svg { position: absolute; left: 10px; top: 9px; color: var(--muted); }
+      .topnav { display: flex; gap: 4px; margin-left: 8px; }
+      .topnav a { padding: 7px 12px; border-radius: 8px; font-size: 14px; color: var(--muted); }
+      .topnav a.active { color: var(--brand); background: #eef2ff; font-weight: 600; }
+      .spacer { flex: 1; }
+      .iconbtn { position: relative; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); display: grid; place-items: center; cursor: pointer; }
+      .iconbtn .dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; background: var(--red); border-radius: 50%; border: 2px solid #fff; }
+      .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; display: grid; place-items: center; font-weight: 700; cursor: pointer; }
+
+      .layout { display: grid; grid-template-columns: 224px 1fr; }
+      /* sidebar */
+      .sidebar { padding: 16px 12px; border-right: 1px solid var(--border); background: var(--card); min-height: calc(100vh - 56px); }
+      .side-group { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 8px 6px; }
+      .side-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; font-size: 14px; color: #334155; cursor: pointer; }
+      .side-item .ic { width: 18px; height: 18px; color: var(--muted); }
+      .side-item.active { background: #eef2ff; color: var(--brand); font-weight: 600; }
+      .side-item.active .ic { color: var(--brand); }
+      .side-item:hover:not(.active) { background: #f8fafc; }
+      .badge-count { margin-left: auto; background: #eef2ff; color: var(--brand); font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+
+      /* main */
+      .main { padding: 22px 26px; }
+      .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .page-head h1 { font-size: 22px; margin: 0; }
+      .page-head .sub { color: var(--muted); font-size: 13px; }
+      .btn { height: 38px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+      .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+      .btn.ghost { color: var(--muted); }
+      select.btn { padding: 0 10px; }
+
+      .grid { display: grid; gap: 16px; }
+      .stats { grid-template-columns: repeat(4, 1fr); }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+      .stat .label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+      .stat .value { font-size: 26px; font-weight: 800; margin: 8px 0 4px; }
+      .delta { font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
+      .delta.up { color: var(--green); background: #dcfce7; }
+      .delta.down { color: var(--red); background: #fee2e2; }
+      .spark { margin-top: 10px; }
+
+      .cols { grid-template-columns: 1.6fr 1fr; margin-top: 16px; }
+      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+      .card-head h3 { margin: 0; font-size: 15px; }
+      .chip { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; cursor: pointer; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 16px; }
+      th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+      td { padding: 11px 10px; border-bottom: 1px solid #f1f5f9; }
+      tr:hover td { background: #fafbff; }
+      .pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+      .pill.paid { color: var(--green); background: #dcfce7; }
+      .pill.pending { color: var(--amber); background: #fef3c7; }
+      .pill.refunded { color: var(--red); background: #fee2e2; }
+      .u { display: flex; align-items: center; gap: 9px; }
+      .u .av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; }
+      .rowbtn { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 5px 10px; font-size: 13px; cursor: pointer; }
+
+      .prod { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+      .prod .thumb { width: 40px; height: 40px; border-radius: 9px; background: #eef2ff; display: grid; place-items: center; }
+      .prod .meta { flex: 1; }
+      .prod .name { font-size: 14px; font-weight: 600; }
+      .prod .sub { font-size: 12px; color: var(--muted); }
+      .prod .amt { font-weight: 700; font-size: 14px; }
+      .bar { height: 6px; border-radius: 999px; background: #eef2ff; margin-top: 6px; overflow: hidden; }
+      .bar > span { display: block; height: 100%; background: var(--brand-2); }
+      footer { color: var(--muted); font-size: 12px; padding: 18px 26px; }
     </style>
   </head>
-  <body>
-    <header data-component="Header">
-      <img id="logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' rx='6' fill='%232563eb'/%3E%3C/svg%3E" alt="logo" />
-      <span class="brand">Demo Shop</span>
-    </header>
-    <main data-component="ProductPage">
-      <div class="product">
-        <img alt="product" />
-        <div>
-          <h1>Wireless Headphones</h1>
-          <div class="price">₩129,000</div>
-          <button id="buy" class="buy" data-testid="buy-btn" data-component="BuyButton">Buy</button>
-        </div>
+  <body data-component="DashboardApp">
+    <!-- TOP BAR -->
+    <div class="topbar" data-component="TopBar">
+      <div class="logo"><span class="mark"></span> Acme Analytics</div>
+      <div class="search" id="global-search" data-component="SearchBox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="search-input" data-testid="search" placeholder="Search orders, customers, products…" />
       </div>
-    </main>
+      <nav class="topnav" data-component="TopNav">
+        <a href="#" class="active" data-testid="nav-dashboard">Dashboard</a>
+        <a href="#" data-testid="nav-reports">Reports</a>
+        <a href="#" data-testid="nav-settings">Settings</a>
+      </nav>
+      <div class="spacer"></div>
+      <div class="iconbtn" id="notif-bell" data-testid="notifications" title="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="dot"></span>
+      </div>
+      <div class="avatar" id="user-avatar" data-testid="avatar" data-component="UserMenu">JP</div>
+    </div>
+
+    <div class="layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar" data-component="Sidebar">
+        <div class="side-group">Workspace</div>
+        <div class="side-item active" id="nav-overview" data-testid="side-overview"><span class="ic">▦</span> Overview</div>
+        <div class="side-item" id="nav-orders" data-testid="side-orders"><span class="ic">🧾</span> Orders <span class="badge-count">24</span></div>
+        <div class="side-item" id="nav-customers" data-testid="side-customers"><span class="ic">👤</span> Customers</div>
+        <div class="side-item" id="nav-products" data-testid="side-products"><span class="ic">📦</span> Products</div>
+        <div class="side-group">Insights</div>
+        <div class="side-item" id="nav-analytics" data-testid="side-analytics"><span class="ic">📈</span> Analytics</div>
+        <div class="side-item" id="nav-funnels" data-testid="side-funnels"><span class="ic">🔻</span> Funnels</div>
+        <div class="side-group">Account</div>
+        <div class="side-item" id="nav-settings" data-testid="side-settings"><span class="ic">⚙️</span> Settings</div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main" data-component="OverviewPage">
+        <div class="page-head">
+          <div>
+            <h1>Overview</h1>
+            <div class="sub">Welcome back — here's what's happening today.</div>
+          </div>
+          <div class="spacer"></div>
+          <select class="btn" id="date-filter" data-testid="date-range">
+            <option>Last 7 days</option><option>Last 30 days</option><option>This quarter</option>
+          </select>
+          <button class="btn ghost" id="export-btn" data-testid="export">Export</button>
+          <button class="btn primary" id="new-report" data-testid="new-report-btn" data-component="NewReportButton">+ New report</button>
+        </div>
+
+        <!-- STAT CARDS -->
+        <section class="grid stats" data-component="StatGrid">
+          <div class="card stat" id="stat-revenue" data-component="StatCard" data-metric="revenue">
+            <div class="label">💰 Revenue</div>
+            <div class="value">$48,290</div>
+            <span class="delta up">▲ 12.4%</span>
+            <div class="spark"><svg width="100%" height="34" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline fill="none" stroke="#6366f1" stroke-width="2" points="0,28 20,22 40,24 60,14 80,18 100,8 120,10"/></svg></div>
+          </div>
+          <div class="card stat" id="stat-orders" data-component="StatCard" data-metric="orders">
+            <div class="label">🧾 Orders</div>
+            <div class="value">1,284</div>
+            <span class="delta up">▲ 4.1%</span>
+            <div class="spark"><svg width="100%" height="34" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline fill="none" stroke="#16a34a" stroke-width="2" points="0,20 20,24 40,18 60,22 80,12 100,16 120,9"/></svg></div>
+          </div>
+          <div class="card stat" id="stat-customers" data-component="StatCard" data-metric="customers">
+            <div class="label">👤 Customers</div>
+            <div class="value">932</div>
+            <span class="delta down">▼ 1.8%</span>
+            <div class="spark"><svg width="100%" height="34" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline fill="none" stroke="#dc2626" stroke-width="2" points="0,10 20,14 40,12 60,18 80,16 100,22 120,24"/></svg></div>
+          </div>
+          <div class="card stat" id="stat-conversion" data-component="StatCard" data-metric="conversion">
+            <div class="label">🎯 Conversion</div>
+            <div class="value">3.62%</div>
+            <span class="delta up">▲ 0.6%</span>
+            <div class="spark"><svg width="100%" height="34" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline fill="none" stroke="#6366f1" stroke-width="2" points="0,24 20,20 40,22 60,16 80,18 100,12 120,14"/></svg></div>
+          </div>
+        </section>
+
+        <section class="grid cols">
+          <!-- CHART -->
+          <div class="card" id="revenue-chart" data-component="RevenueChart">
+            <div class="card-head">
+              <h3>Revenue over time</h3>
+              <span class="chip" id="chart-range" data-testid="chart-range">Weekly ▾</span>
+            </div>
+            <svg width="100%" height="200" viewBox="0 0 520 200" preserveAspectRatio="none">
+              <g stroke="#eef2ff" stroke-width="1">
+                <line x1="0" y1="40" x2="520" y2="40"/><line x1="0" y1="90" x2="520" y2="90"/><line x1="0" y1="140" x2="520" y2="140"/><line x1="0" y1="190" x2="520" y2="190"/>
+              </g>
+              <polyline fill="none" stroke="#4f46e5" stroke-width="3" points="0,160 75,120 150,135 225,90 300,110 375,60 450,80 520,40"/>
+              <polygon fill="rgba(79,70,229,.08)" points="0,160 75,120 150,135 225,90 300,110 375,60 450,80 520,40 520,200 0,200"/>
+            </svg>
+          </div>
+
+          <!-- TOP PRODUCTS -->
+          <div class="card" id="top-products" data-component="TopProducts">
+            <div class="card-head"><h3>Top products</h3><a href="#" class="chip" data-testid="see-all">See all</a></div>
+            <div class="prod"><div class="thumb">🎧</div><div class="meta"><div class="name">Aero Headphones</div><div class="sub">412 sold</div><div class="bar"><span style="width:86%"></span></div></div><div class="amt">$12.4k</div></div>
+            <div class="prod"><div class="thumb">⌚</div><div class="meta"><div class="name">Pulse Watch</div><div class="sub">388 sold</div><div class="bar"><span style="width:72%"></span></div></div><div class="amt">$9.1k</div></div>
+            <div class="prod"><div class="thumb">🔌</div><div class="meta"><div class="name">Volt Charger</div><div class="sub">301 sold</div><div class="bar"><span style="width:54%"></span></div></div><div class="amt">$5.7k</div></div>
+            <div class="prod"><div class="thumb">🎮</div><div class="meta"><div class="name">Nova Controller</div><div class="sub">240 sold</div><div class="bar"><span style="width:41%"></span></div></div><div class="amt">$4.2k</div></div>
+          </div>
+        </section>
+
+        <!-- ORDERS TABLE -->
+        <div class="card" id="orders-table" data-component="OrdersTable" style="margin-top:16px">
+          <div class="card-head">
+            <h3>Recent orders</h3>
+            <button class="rowbtn" id="filter-orders" data-testid="filter">Filter ▾</button>
+          </div>
+          <table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Total</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>#10472</td><td><div class="u"><span class="av" style="background:#6366f1">SK</span> Sora Kim</div></td><td><span class="pill paid" data-testid="status-paid">Paid</span></td><td>$129.00</td><td><button class="rowbtn" data-testid="row-view">View</button></td></tr>
+              <tr><td>#10471</td><td><div class="u"><span class="av" style="background:#f59e0b">MJ</span> Min Jun</div></td><td><span class="pill pending">Pending</span></td><td>$89.50</td><td><button class="rowbtn">View</button></td></tr>
+              <tr><td>#10470</td><td><div class="u"><span class="av" style="background:#10b981">EL</span> Elena Park</div></td><td><span class="pill paid">Paid</span></td><td>$245.00</td><td><button class="rowbtn">View</button></td></tr>
+              <tr><td>#10469</td><td><div class="u"><span class="av" style="background:#ef4444">RT</span> Ravi Tan</div></td><td><span class="pill refunded">Refunded</span></td><td>$54.00</td><td><button class="rowbtn">View</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <footer>© 2026 Acme Analytics · Local dev build · v0.1.0</footer>
+      </main>
+    </div>
   </body>
 </html>

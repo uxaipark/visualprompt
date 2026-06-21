@@ -6,11 +6,11 @@ can edit the actual source code. SPA, login, and bot-blocked sites are handled v
 
 ## Screenshots
 
-**1. Point at a UI element** — toggle *UI Prompt* mode, hover, and the element is highlighted with its selector.
+**1. Pin edit prompts across a complex UI** — toggle *UI Prompt* mode and drop a pin (📌) on any element. Each pin captures the element's `selector`/`xpath` + your prompt, lists it in the side panel, and queues it in the server inbox for the agent.
 
-![Selecting a UI element](docs/images/shot-1-select.png)
+![Multiple prompt pins on a dashboard](docs/images/shot-1-pins.png)
 
-**2. Write an edit prompt** — click the element; a popover shows its `selector` / `xpath`, and you type the change you want.
+**2. Write an edit prompt** — click an element; a popover shows its `selector` / `xpath`, and you type the change you want.
 
 ![Entering an edit prompt](docs/images/shot-2-prompt.png)
 

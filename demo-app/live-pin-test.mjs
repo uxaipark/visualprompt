@@ -21,23 +21,23 @@ try {
 
   await page.waitForSelector('iframe.page-frame')
   const frame = page.frameLocator('iframe.page-frame')
-  await frame.locator('#buy').waitFor({ timeout: 15000 })
-  log('Demo app loaded (Buy button visible)')
+  await frame.locator('#new-report').waitFor({ timeout: 15000 })
+  log('Demo app loaded (New report button visible)')
 
   // Give the inspector time to activate
   await page.waitForTimeout(800)
 
   // Turn the UI prompt switch ON
-  await page.locator('label.switch', { hasText: 'UI prompt' }).click()
+  await page.locator('label.switch', { hasText: 'UI Prompt' }).click()
   log('UI prompt mode ON')
   await page.waitForTimeout(400)
 
-  // Click the Buy button → popover
-  await frame.locator('#buy').click()
+  // Click the New report button → popover
+  await frame.locator('#new-report').click()
   await frame.locator('#__vp_pop textarea').waitFor({ timeout: 5000 })
   log('Popover shown → entering prompt')
 
-  const PROMPT = 'Make the Buy button bigger, change it to green (#16a34a), and change the text to "Buy now"'
+  const PROMPT = 'Open a modal instead of navigating; keep the brand color and make it the primary CTA'
   await frame.locator('#__vp_pop textarea').fill(PROMPT)
   await frame.locator('#__vp_pop .__vp_save').click()
   log('Clicked save → waiting for server write')
@@ -47,7 +47,7 @@ try {
 
   const res = await page.evaluate(async () => (await fetch('/api/fixpoints')).json())
   const pending = res.pending || []
-  const hit = pending.find((p) => p.prompt && p.prompt.includes('Buy now'))
+  const hit = pending.find((p) => p.prompt && p.prompt.includes('primary CTA'))
 
   console.log('\n=== Result ===')
   console.log('pending count:', pending.length)
