@@ -137,6 +137,7 @@ html.js [data-reveal].in{opacity:1;transform:none}
 <nav>
   <div class="brand"><span class="dot"></span> VisualPrompt</div>
   <div class="links">
+    <a href="#about">About</a>
     <a href="#how">How it works</a>
     <a href="#paths">Collection paths</a>
     <a href="#hardening">Hardening</a>
@@ -180,6 +181,34 @@ html.js [data-reveal].in{opacity:1;transform:none}
       <img src="images/shot-1-pins.png" alt="Multiple edit-prompt pins placed across a dashboard UI" />
       <figcaption>Five edit-prompt pins on a live dashboard — each captures the element + your prompt, queued in the server inbox.</figcaption>
     </figure>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="wrap">
+    <div class="kicker" data-reveal>About</div>
+    <h2 data-reveal>What is <span class="grad">VisualPrompt</span>?</h2>
+    <p class="lead" data-reveal style="max-width:760px">
+      VisualPrompt turns <b>"pointing at something on screen"</b> into a precise, machine-readable edit instruction.
+      Toggle <i>UI&nbsp;Prompt</i> mode, click any element, and write the change in a popover. Each pin automatically
+      captures the element's <code>selector</code>, <code>xpath</code>, bounding box, framework, <code>data-testid</code>,
+      component name, and recent API calls — everything an agent needs to find and edit the real source.
+    </p>
+    <p class="lead muted" data-reveal style="max-width:760px;margin-top:16px">
+      It wraps <b>any site</b> three ways so the inspector can run on it: a rewriting <b>proxy</b> for built/static sites
+      and local dev servers, a headless <b>Playwright render</b> for SPAs, login, and bot-blocked sites, and an MV3
+      <b>browser extension</b> that runs in your real tab for the hard cases (Next/Vite dev, logged-in screens). Collected
+      pins are written as structured <b>fixpoint</b> files into a server inbox, where a code agent reads them, locates the
+      source by search clues, edits it, and moves it to <code>applied/</code>.
+    </p>
+    <div class="chips" data-reveal style="margin-top:22px">
+      <span class="chip">Node + Express</span>
+      <span class="chip">React + Vite</span>
+      <span class="chip">Playwright</span>
+      <span class="chip">Chrome MV3</span>
+      <span class="chip ok">MIT-friendly · self-hosted</span>
+    </div>
   </div>
 </section>
 
