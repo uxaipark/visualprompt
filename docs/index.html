@@ -66,6 +66,16 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.12;font-weight:800;letter-spac
 .bubble{border:1px solid var(--line);border-radius:14px;border-top-left-radius:4px;padding:13px 16px;background:rgba(255,91,138,.06);color:#ffd9e2;font-size:15px;width:fit-content;max-width:100%}
 .punch{margin-top:22px;font-size:clamp(18px,2.4vw,24px);font-weight:700}
 
+/* problem-first opening (emphasized) */
+.opening{padding-top:58px;padding-bottom:56px}
+.opening h1.prob{font-size:clamp(32px,5.4vw,60px);line-height:1.07;font-weight:900;letter-spacing:-.02em;margin:8px 0 24px;max-width:20ch}
+.opening .bubbles{max-width:720px}
+.opening .bubble{font-size:16.5px;padding:15px 19px}
+.opening .punch{margin-top:28px;font-size:clamp(20px,2.9vw,30px)}
+.to-fix{display:inline-flex;align-items:center;gap:11px;margin-top:30px;color:var(--accent);font-weight:600;font-size:15px}
+.to-fix .ln{width:44px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}
+.to-fix:hover{color:#9bb6ff}
+
 /* flow */
 .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin-top:10px}
 .step{flex:1;min-width:150px;border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--card);text-align:center}
@@ -135,13 +145,27 @@ html.js [data-reveal].in{opacity:1;transform:none}
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
+<!-- PROBLEM (opening — emphasized, first) -->
+<section class="opening">
   <div class="wrap">
-    <div class="kicker" data-reveal>PIN · PROMPT · PATCH</div>
+    <div class="kicker" data-reveal>The problem</div>
+    <h1 class="prob" data-reveal>Telling AI <span class="grad-warm">which element</span> to fix is the hard part.</h1>
+    <div class="bubbles">
+      <div class="bubble" data-reveal>"Not the second card top-left… the grey button next to it."</div>
+      <div class="bubble" data-reveal>"No, above that — actually the text inside it."</div>
+      <div class="bubble" data-reveal>"Make the color darker… wait, not that one…"</div>
+    </div>
+    <p class="punch" data-reveal>The moment you <b>describe an element in words</b>, the conversation falls apart.</p>
+    <a class="to-fix" href="#solution" data-reveal><span class="ln"></span> Here's the fix ↓</a>
+  </div>
+</section>
+
+<!-- SOLUTION / HERO -->
+<section class="hero" id="solution">
+  <div class="wrap">
+    <div class="kicker" data-reveal>The fix · pin · prompt · patch</div>
     <h1 data-reveal><span class="pin">📍</span> Fix web UI<br>by <span class="grad">pinning it</span>.</h1>
-    <p class="lead" data-reveal>Drop a pin on any element, write one line, and a code agent edits exactly that spot in the real source.
-      No more "the second card on the top-left… no, the grey button next to it."</p>
+    <p class="lead" data-reveal>Drop a pin on any element, write one line, and a code agent edits exactly that spot in the real source — no describing required.</p>
     <div class="chips" data-reveal>
       <span class="chip">Any site</span>
       <span class="chip">SPA · Next.js · Figma exports</span>
@@ -156,20 +180,6 @@ html.js [data-reveal].in{opacity:1;transform:none}
       <img src="images/shot-1-pins.png" alt="Multiple edit-prompt pins placed across a dashboard UI" />
       <figcaption>Five edit-prompt pins on a live dashboard — each captures the element + your prompt, queued in the server inbox.</figcaption>
     </figure>
-  </div>
-</section>
-
-<!-- PROBLEM -->
-<section>
-  <div class="wrap">
-    <div class="kicker" data-reveal>The problem</div>
-    <h2 data-reveal>Telling AI <span class="grad-warm">which element</span> to fix is the hard part</h2>
-    <div class="bubbles">
-      <div class="bubble" data-reveal>"Not the second card top-left… the grey button next to it."</div>
-      <div class="bubble" data-reveal>"No, above that — actually the text inside it."</div>
-      <div class="bubble" data-reveal>"Make the color darker… wait, not that one…"</div>
-    </div>
-    <p class="punch" data-reveal>The moment you <b>describe an element in words</b>, the conversation falls apart.</p>
   </div>
 </section>
 
